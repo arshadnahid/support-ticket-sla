@@ -6,3 +6,5 @@ variables:
     value: ""
   - name: refreshTocken
     value: ""
+  - name: ticketNumber
+    value: ""

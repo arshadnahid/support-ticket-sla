@@ -3,8 +3,13 @@
 A Laravel REST API for support tickets with roles (Administrator, Support Agent, Customer),
 JWT authentication and SLA tracking. Built for the PHP team assessment (`doc/Assessment for PHP team.pdf`).
 
-**Status:** the Auth module is done. Tickets, SLA and the rest are built module by module; each
-module is documented in [`tec-doc/`](tec-doc/) (start with [`tec-doc/1.auth.md`](tec-doc/1.auth.md)).
+**Status:** built module by module; each module is documented step by step in [`tec-doc/`](tec-doc/).
+
+| Module | Assessment sections | Status | Doc |
+|---|---|---|---|
+| Auth and roles | (3, foundation) | Done | [`1.auth.md`](tec-doc/1.auth.md) |
+| Tickets, ticket IDs, permissions | 1, 2, 3 | Done | [`2.tickets.md`](tec-doc/2.tickets.md) |
+| Assignment, conversation, attachments, SLA, business hours, escalation, notifications, search | 4 to 12 | Not started | |
 
 ---
 
@@ -132,6 +137,17 @@ plain files in this repository (`bruno/support-ticket-sla/`), so they are versio
 4. **Auth → refresh** returns a new token and saves it. **Auth → logout** invalidates the token and clears the variable.
 5. **Auth → register** creates a new customer with a random email and saves its token.
 
+**Try the ticket flow** (folder **Ticket**)
+
+1. Log in as a customer: in **Auth → login** change the email to `customer1@example.com`, then **Send**.
+2. **Ticket → categories** to see the category ids, then **Ticket → create ticket**. It saves the new
+   number (for example `TKT-2026-000031`) into the `ticketNumber` variable.
+3. **show ticket**, **update ticket** and the list requests now use that number automatically.
+4. Log in as `admin@example.com` (**Auth → login** again) and run **change status**, **resolve ticket** or
+   **close ticket** on the same number. Log in as another customer and **show ticket** to see the `403`.
+
+**Auth requests**
+
 | Request | Method | URL | Needs token |
 |---|---|---|---|
 | register | POST | `{{baseUrl}}/auth/register` | No |
@@ -140,10 +156,28 @@ plain files in this repository (`bruno/support-ticket-sla/`), so they are versio
 | me | GET | `{{baseUrl}}/auth/me` | Yes |
 | logout | POST | `{{baseUrl}}/auth/logout` | Yes |
 
+**Ticket requests** (all need a token)
+
+| Request | Method | URL |
+|---|---|---|
+| categories | GET | `{{baseUrl}}/categories` |
+| create ticket | POST | `{{baseUrl}}/tickets` |
+| list tickets | GET | `{{baseUrl}}/tickets?page=1&per_page=15` |
+| list active tickets | GET | `{{baseUrl}}/tickets/active` |
+| list resolved-closed tickets | GET | `{{baseUrl}}/tickets/resolved` |
+| show ticket | GET | `{{baseUrl}}/tickets/{{ticketNumber}}` |
+| update ticket | PATCH | `{{baseUrl}}/tickets/{{ticketNumber}}` |
+| change status | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/status` |
+| resolve ticket | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/resolve` |
+| close ticket | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/close` |
+
 **Tips**
 - Always send the `Accept: application/json` header (the requests already do).
 - A `401` on `me` means you haven't logged in yet, or the token expired. Run **login** again.
 - A `429` means too many login attempts (limit: 5 per minute per email and IP). Wait a minute.
+- A `403` on a ticket means your role may not do that (for example a customer viewing someone
+  else's ticket). A `409` means the ticket can't move to that status (see `tec-doc/2.tickets.md`, Step 10).
+- An empty ticket list returns `404` with `success: false` (existing response helper; see `tec-doc/2.tickets.md`, Step 15).
 - To see which variable holds the token: **Environments → localhost → accessToken**.
 - New requests you add are saved as files in the collection folder. Commit them with your code.
 
@@ -163,21 +197,27 @@ Not required for the Auth module. Later modules (email notifications, SLA escala
 will need them, and this section will list the commands (`php artisan queue:work`,
 `php artisan schedule:work`) when they are added.
 
-## 8. Project structure (auth module)
+## 8. Project structure
 
 ```
 app/
-  Enums/UserRole.php                     roles: admin, agent, customer
-  Http/Controllers/Api/v1/Auth/          AuthController (HTTP only)
+  Enums/                                 UserRole, TicketPriority, TicketStatus, TicketListScope
+  Models/                                User, Ticket, Category
+  Policies/TicketPolicy.php              who may view / update / change status of a ticket
+  Http/Controllers/Api/v1/Auth/          AuthController
+  Http/Controllers/Api/v1/Ticket/        TicketController, CategoryController (HTTP only)
   Http/Middleware/                       EnsureUserIsActive, EnsureUserHasRole
-  Http/Requests/Api/Auth/                LoginRequest, RegisterRequest
-  Http/Resources/Auth/                   UserResource, TokenResource
-  Services/Auth/AuthService.php          business rules
-  Repositories/Auth/                     AuthInterface + AuthRepository
-  DTOs/Auth/                             data passed between layers
+  Http/Requests/Api/{Auth,Ticket}/       validation
+  Http/Resources/{Auth,Ticket}/          JSON output
+  Services/Auth/                         AuthService
+  Services/Ticket/                       TicketService, TicketNumberGenerator
+  Repositories/{Auth,Ticket,Category}/   Interface + implementation
+  DTOs/{Auth,Ticket}/                    data passed between layers
+  Events/Ticket/                         TicketCreated, TicketUpdated, TicketStatusChanged
   Exceptions/ApiExceptionRenderer.php    all API errors in one JSON format
-  OpenApi/OpenApiSpec.php                Swagger global definitions
-bruno/support-ticket-sla/                Bruno collection
+  OpenApi/                               Swagger definitions
+config/tickets.php                       ticket number prefix/padding, pagination
+bruno/support-ticket-sla/                Bruno collection (Auth, Ticket)
 tec-doc/                                 step-by-step technical docs
 ```
 
@@ -193,10 +233,15 @@ Every response, success or error, has the same shape:
 |---|---|
 | 401 | Missing/invalid token, or wrong email or password |
 | 403 | Account deactivated, or role not allowed |
+| 404 | Ticket or route not found |
+| 409 | The ticket can't move to that status (for example reopening a closed ticket) |
 | 422 | Validation failed (details in `errors`) |
 | 429 | Too many requests (see the `Retry-After` header) |
 
 ## 10. Architecture decisions
 
-The reasons behind each decision (roles as an enum, JWT, layering, rate limiting, error handling)
-are in [`tec-doc/1.auth.md`](tec-doc/1.auth.md).
+The reasons behind each decision are in `tec-doc/`:
+
+- [`1.auth.md`](tec-doc/1.auth.md): roles as an enum, JWT, layering, middleware, rate limiting, error handling.
+- [`2.tickets.md`](tec-doc/2.tickets.md): ticket number generation and its concurrency test, the permission matrix,
+  status flow, indexes, events, and the list of assumptions and known limits.

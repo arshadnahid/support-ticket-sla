@@ -4,6 +4,10 @@ namespace App\Providers;
 
 use App\Repositories\Auth\AuthInterfaces\AuthInterface;
 use App\Repositories\Auth\AuthRepository;
+use App\Repositories\Category\CategoryInterfaces\CategoryInterface;
+use App\Repositories\Category\CategoryRepository;
+use App\Repositories\Ticket\TicketInterfaces\TicketInterface;
+use App\Repositories\Ticket\TicketRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -15,6 +19,8 @@ class RepositoryServiceProvider extends ServiceProvider
      */
     public array $bindings = [
         AuthInterface::class => AuthRepository::class,
+        TicketInterface::class => TicketRepository::class,
+        CategoryInterface::class => CategoryRepository::class,
     ];
 
     /**

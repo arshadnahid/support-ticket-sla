@@ -1,0 +1,38 @@
+<?php
+
+namespace App\Repositories\Ticket\TicketInterfaces;
+
+use App\Enums\TicketListScope;
+use App\Models\Ticket;
+use App\Models\User;
+use Illuminate\Pagination\LengthAwarePaginator;
+
+interface TicketInterface
+{
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function create(array $attributes): Ticket;
+
+    /**
+     * Re-read the ticket with a row lock (SELECT ... FOR UPDATE). Call inside a transaction.
+     */
+    public function lockForUpdate(int $id): Ticket;
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function update(Ticket $ticket, array $attributes): Ticket;
+
+    /**
+     * One page of the tickets $user is allowed to see, relations eager-loaded.
+     *
+     * @return LengthAwarePaginator<int, Ticket>
+     */
+    public function paginateFor(User $user, TicketListScope $scope, int $perPage): LengthAwarePaginator;
+
+    /**
+     * Eager-load everything TicketResource needs.
+     */
+    public function loadRelations(Ticket $ticket): Ticket;
+}

@@ -1,0 +1,18 @@
+info:
+  name: close ticket
+  type: http
+  seq: 10
+
+http:
+  method: POST
+  url: "{{baseUrl}}/tickets/{{ticketNumber}}/close"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

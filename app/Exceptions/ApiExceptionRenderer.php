@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tymon\JWTAuth\Exceptions\JWTException;
 
 /**
@@ -39,6 +41,17 @@ class ApiExceptionRenderer
         ));
 
         $exceptions->render(fn (AuthorizationException|AccessDeniedHttpException $e, Request $request) => $this->when($request, fn () => $this->sendErrors(__('apiresponse.TEXT_FORBIDDEN'), [], Response::HTTP_FORBIDDEN)
+        ));
+
+        // Laravel turns ModelNotFoundException (route model binding) into NotFoundHttpException first.
+        $exceptions->render(fn (NotFoundHttpException $e, Request $request) => $this->when($request, fn () => $this->sendErrors(__('apiresponse.TEXT_NOT_FOUND'), [], Response::HTTP_NOT_FOUND)
+        ));
+
+        $exceptions->render(fn (MethodNotAllowedHttpException $e, Request $request) => $this->when($request, fn () => $this->sendErrors(__('apiresponse.TEXT_METHOD_NOT_ALLOWED'), [], Response::HTTP_METHOD_NOT_ALLOWED)
+        ));
+
+        // The ticket is in a state that does not allow the request (e.g. reopening a closed ticket).
+        $exceptions->render(fn (InvalidTicketTransitionException $e, Request $request) => $this->when($request, fn () => $this->sendErrors($e->getMessage(), [], Response::HTTP_CONFLICT)
         ));
 
         $exceptions->render(fn (ThrottleRequestsException $e, Request $request) => $this->when($request, fn () => $this->sendErrors(__('apiresponse.TEXT_TOO_MANY_REQUESTS'), [], Response::HTTP_TOO_MANY_REQUESTS)

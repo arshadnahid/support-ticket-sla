@@ -334,6 +334,526 @@
                     }
                 ]
             }
+        },
+        "/api/categories": {
+            "get": {
+                "tags": [
+                    "Categories"
+                ],
+                "summary": "List active ticket categories",
+                "description": "List the categories a ticket can be filed under.",
+                "operationId": "categoriesIndex",
+                "responses": {
+                    "200": {
+                        "description": "Active categories, ordered by name",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/Category"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/AccountInactive"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tickets": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "List tickets",
+                "description": "Every ticket the current user may see, newest first. Customers see their own tickets, agents see tickets assigned to them plus the unassigned queue, admins see all.",
+                "operationId": "ticketsIndex",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of tickets",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Create a ticket",
+                "description": "Creates a ticket with status `open` and a new unique number such as `TKT-2026-000001`. `priority` defaults to `medium`.",
+                "operationId": "ticketsStore",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "subject",
+                                    "description",
+                                    "category_id"
+                                ],
+                                "properties": {
+                                    "subject": {
+                                        "type": "string",
+                                        "example": "Cannot log in",
+                                        "maxLength": 255
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "example": "I get an error after entering my password.",
+                                        "maxLength": 10000
+                                    },
+                                    "priority": {
+                                        "type": "string",
+                                        "example": "high",
+                                        "enum": [
+                                            "low",
+                                            "medium",
+                                            "high",
+                                            "critical"
+                                        ]
+                                    },
+                                    "category_id": {
+                                        "description": "Id from GET /api/categories",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Ticket created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tickets/active": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "List upcoming / active tickets",
+                "description": "Open, in-progress and waiting-for-customer tickets, earliest SLA deadline first (tickets without a deadline last).",
+                "operationId": "ticketsActive",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of active tickets",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tickets/resolved": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "List resolved / closed tickets",
+                "description": "Resolved and closed tickets, most recently updated first.",
+                "operationId": "ticketsResolved",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of resolved or closed tickets",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tickets/{ticket}": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "View a ticket",
+                "operationId": "ticketsShow",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The ticket",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Update a ticket",
+                "description": "Send only the fields to change. Customers may edit `subject`, `description` and `category_id` of their own ticket while it is still `open`, and may not send `priority`. Agents can edit tickets assigned to them, admins any ticket. Closed tickets cannot be edited.",
+                "operationId": "ticketsUpdate",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "subject": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "maxLength": 10000
+                                    },
+                                    "priority": {
+                                        "description": "Staff only",
+                                        "type": "string",
+                                        "enum": [
+                                            "low",
+                                            "medium",
+                                            "high",
+                                            "critical"
+                                        ]
+                                    },
+                                    "category_id": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ticket updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tickets/{ticket}/status": {
+            "post": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Change a ticket status",
+                "description": "Allowed moves: open -> in_progress / waiting_for_customer / resolved / closed; in_progress -> waiting_for_customer / resolved / closed; waiting_for_customer -> in_progress / resolved / closed; resolved -> in_progress (reopen) / closed. `closed` is final. Customers may only close their own ticket.",
+                "operationId": "ticketsChangeStatus",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "status"
+                                ],
+                                "properties": {
+                                    "status": {
+                                        "type": "string",
+                                        "example": "in_progress",
+                                        "enum": [
+                                            "open",
+                                            "in_progress",
+                                            "waiting_for_customer",
+                                            "resolved",
+                                            "closed"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Status changed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tickets/{ticket}/resolve": {
+            "post": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Resolve a ticket",
+                "description": "Shortcut for setting the status to `resolved`. Agents (assigned) and admins only.",
+                "operationId": "ticketsResolve",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ticket resolved",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tickets/{ticket}/close": {
+            "post": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Close a ticket",
+                "description": "Shortcut for setting the status to `closed` (final). The ticket owner, the assigned agent and admins may close a ticket.",
+                "operationId": "ticketsClose",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ticket closed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -442,6 +962,217 @@
                     }
                 },
                 "type": "object"
+            },
+            "TicketUser": {
+                "description": "Creator or assignee. `email` is only included for staff.",
+                "properties": {
+                    "id": {
+                        "description": "Shared OpenAPI components for the ticket endpoints (schemas, parameters, error responses).",
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Agent One"
+                    },
+                    "email": {
+                        "type": "string",
+                        "format": "email",
+                        "example": "agent1@example.com"
+                    }
+                },
+                "type": "object"
+            },
+            "Category": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Technical"
+                    },
+                    "slug": {
+                        "type": "string",
+                        "example": "technical"
+                    }
+                },
+                "type": "object"
+            },
+            "Ticket": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "number": {
+                        "description": "Public ticket ID, also used in URLs",
+                        "type": "string",
+                        "example": "TKT-2026-000001"
+                    },
+                    "subject": {
+                        "type": "string",
+                        "example": "Cannot log in"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "I get an error after entering my password."
+                    },
+                    "priority": {
+                        "properties": {
+                            "value": {
+                                "type": "string",
+                                "example": "high",
+                                "enum": [
+                                    "low",
+                                    "medium",
+                                    "high",
+                                    "critical"
+                                ]
+                            },
+                            "label": {
+                                "type": "string",
+                                "example": "High"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "status": {
+                        "properties": {
+                            "value": {
+                                "type": "string",
+                                "example": "open",
+                                "enum": [
+                                    "open",
+                                    "in_progress",
+                                    "waiting_for_customer",
+                                    "resolved",
+                                    "closed"
+                                ]
+                            },
+                            "label": {
+                                "type": "string",
+                                "example": "Open"
+                            }
+                        },
+                        "type": "object"
+                    },
+                    "category": {
+                        "$ref": "#/components/schemas/Category"
+                    },
+                    "created_by": {
+                        "$ref": "#/components/schemas/TicketUser"
+                    },
+                    "assigned_to": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/TicketUser"
+                            }
+                        ],
+                        "nullable": true
+                    },
+                    "due_at": {
+                        "description": "SLA deadline (set by the SLA module)",
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "resolved_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "closed_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "nullable": true
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "Pagination": {
+                "properties": {
+                    "current_page": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "per_page": {
+                        "type": "integer",
+                        "example": 15
+                    },
+                    "total": {
+                        "type": "integer",
+                        "example": 42
+                    },
+                    "last_page": {
+                        "type": "integer",
+                        "example": 3
+                    },
+                    "from": {
+                        "type": "integer",
+                        "example": 1,
+                        "nullable": true
+                    },
+                    "to": {
+                        "type": "integer",
+                        "example": 15,
+                        "nullable": true
+                    },
+                    "next_page_url": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "prev_page_url": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "TicketEnvelope": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                        "properties": {
+                            "data": {
+                                "$ref": "#/components/schemas/Ticket"
+                            }
+                        },
+                        "type": "object"
+                    }
+                ]
+            },
+            "TicketListEnvelope": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                        "properties": {
+                            "data": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Ticket"
+                                }
+                            },
+                            "pagination": {
+                                "$ref": "#/components/schemas/Pagination"
+                            }
+                        },
+                        "type": "object"
+                    }
+                ]
             }
         },
         "responses": {
@@ -532,6 +1263,101 @@
                         }
                     }
                 }
+            },
+            "Forbidden": {
+                "description": "You are not allowed to do this",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            ]
+                        },
+                        "example": {
+                            "data": null,
+                            "message": "You are not authorized to perform this action.",
+                            "errors": [],
+                            "success": false,
+                            "status": "error"
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Ticket not found",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            ]
+                        },
+                        "example": {
+                            "data": null,
+                            "message": "The requested resource was not found.",
+                            "errors": [],
+                            "success": false,
+                            "status": "error"
+                        }
+                    }
+                }
+            },
+            "Conflict": {
+                "description": "The ticket is in a state that does not allow this",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/components/schemas/ApiResponse"
+                                }
+                            ]
+                        },
+                        "example": {
+                            "data": null,
+                            "message": "A ticket cannot move from \"Closed\" to \"Open\".",
+                            "errors": [],
+                            "success": false,
+                            "status": "error"
+                        }
+                    }
+                }
+            }
+        },
+        "parameters": {
+            "TicketNumber": {
+                "name": "ticket",
+                "in": "path",
+                "description": "Ticket number",
+                "required": true,
+                "schema": {
+                    "type": "string",
+                    "example": "TKT-2026-000001"
+                }
+            },
+            "Page": {
+                "name": "page",
+                "in": "query",
+                "schema": {
+                    "type": "integer",
+                    "example": 1,
+                    "minimum": 1
+                }
+            },
+            "PerPage": {
+                "name": "per_page",
+                "in": "query",
+                "description": "Items per page (1-100, default 15)",
+                "schema": {
+                    "type": "integer",
+                    "example": 15,
+                    "maximum": 100,
+                    "minimum": 1
+                }
             }
         },
         "securitySchemes": {
@@ -547,6 +1373,14 @@
         {
             "name": "Auth",
             "description": "Authentication & token management"
+        },
+        {
+            "name": "Tickets",
+            "description": "Create, view, update, resolve and close support tickets"
+        },
+        {
+            "name": "Categories",
+            "description": "Ticket categories"
         }
     ]
 }

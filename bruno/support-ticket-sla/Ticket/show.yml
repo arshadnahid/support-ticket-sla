@@ -1,0 +1,18 @@
+info:
+  name: show ticket
+  type: http
+  seq: 6
+
+http:
+  method: GET
+  url: "{{baseUrl}}/tickets/{{ticketNumber}}"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

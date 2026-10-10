@@ -1,0 +1,18 @@
+info:
+  name: categories
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/categories"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

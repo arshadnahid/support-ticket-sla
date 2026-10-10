@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\v1\Auth\AuthController;
+use App\Http\Controllers\Api\v1\Ticket\CategoryController;
+use App\Http\Controllers\Api\v1\Ticket\TicketController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -15,5 +17,26 @@ Route::prefix('auth')->group(function () {
     Route::middleware(['auth:api', 'active'])->group(function () {
         Route::get('me', [AuthController::class, 'me']);
         Route::post('logout', [AuthController::class, 'logout']);
+    });
+});
+
+// Everything below needs a logged-in, enabled user. What each role may do with a ticket is
+// decided per ticket by TicketPolicy, so no role: middleware is needed here.
+Route::middleware(['auth:api', 'active'])->group(function () {
+    Route::get('categories', [CategoryController::class, 'index']);
+
+    Route::prefix('tickets')->controller(TicketController::class)->group(function () {
+        // Fixed paths first, otherwise {ticket} would swallow "active" and "resolved".
+        Route::get('active', 'active');
+        Route::get('resolved', 'resolved');
+
+        Route::get('/', 'index');
+        Route::post('/', 'store');
+
+        Route::get('{ticket}', 'show');
+        Route::patch('{ticket}', 'update');
+        Route::post('{ticket}/status', 'changeStatus');
+        Route::post('{ticket}/resolve', 'resolve');
+        Route::post('{ticket}/close', 'close');
     });
 });
