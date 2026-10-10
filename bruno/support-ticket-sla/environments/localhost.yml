@@ -1,0 +1,8 @@
+name: localhost
+variables:
+  - name: baseUrl
+    value: http://support-ticket-sla.test/api
+  - name: accessToken
+    value: ""
+  - name: refreshTocken
+    value: ""

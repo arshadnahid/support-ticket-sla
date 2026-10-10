@@ -1,0 +1,10 @@
+opencollection: 1.0.0
+
+info:
+  name: support-ticket-sla
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git
