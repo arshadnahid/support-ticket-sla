@@ -6,6 +6,7 @@ use App\Services\Sla\BusinessHours;
 use App\Services\Ticket\Assignment\AssignmentStrategy;
 use App\Services\Ticket\Assignment\LeastWorkloadStrategy;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -30,6 +31,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Safety net against N+1: touching a relation that was not eager-loaded throws in local
+        // and test runs, so a missing ->with() is caught before it ships. In production it stays
+        // off: a miss there would only cost extra queries, and must never break a request.
+        Model::preventLazyLoading(! $this->app->isProduction());
+
         // Brute-force protection for login/register/refresh: per email+IP and per IP.
         RateLimiter::for('auth', fn (Request $request) => [
             Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip()),
