@@ -3,6 +3,7 @@
 namespace App\Repositories\Ticket;
 
 use App\Enums\TicketListScope;
+use App\Enums\TicketPriority;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Repositories\Ticket\TicketInterfaces\TicketInterface;
@@ -45,6 +46,24 @@ class TicketRepository implements TicketInterface
             ->with(self::RELATIONS)
             ->tap(fn (Builder $query) => $this->applyScope($query, $scope))
             ->paginate($perPage);
+    }
+
+    public function unassignedActiveIds(int $limit): array
+    {
+        // CASE priority WHEN 'critical' THEN 4 ... : built from the enum so the order can't drift.
+        $urgency = 'CASE priority '.collect(TicketPriority::cases())
+            ->map(fn (TicketPriority $p) => "WHEN '{$p->value}' THEN {$p->weight()}")
+            ->implode(' ').' ELSE 0 END';
+
+        return Ticket::query()
+            ->active()
+            ->whereNull('assigned_to')
+            ->orderByRaw("$urgency DESC")
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->limit($limit)
+            ->pluck('id')
+            ->all();
     }
 
     public function loadRelations(Ticket $ticket): Ticket

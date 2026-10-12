@@ -1,0 +1,18 @@
+info:
+  name: accept ticket (agent)
+  type: http
+  seq: 12
+
+http:
+  method: POST
+  url: "{{baseUrl}}/tickets/{{ticketNumber}}/accept"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Repositories\Agent\AgentInterfaces\AgentInterface;
+use App\Repositories\Agent\AgentRepository;
 use App\Repositories\Auth\AuthInterfaces\AuthInterface;
 use App\Repositories\Auth\AuthRepository;
 use App\Repositories\Category\CategoryInterfaces\CategoryInterface;
@@ -12,7 +14,6 @@ use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
 {
-
     /**
      * Interface => implementation. To change storage, write a new class
      * for the interface and swap it here.
@@ -21,6 +22,7 @@ class RepositoryServiceProvider extends ServiceProvider
         AuthInterface::class => AuthRepository::class,
         TicketInterface::class => TicketRepository::class,
         CategoryInterface::class => CategoryRepository::class,
+        AgentInterface::class => AgentRepository::class,
     ];
 
     /**

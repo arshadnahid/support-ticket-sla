@@ -17,6 +17,8 @@ use App\Models\User;
  * | create        | yes   | yes                      | yes                              |
  * | update        | any*  | assigned to them*        | own, only while status is Open*  |
  * | changeStatus  | any   | assigned to them         | own, and only to Closed          |
+ * | assign        | yes   | no                       | no                               |
+ * | accept        | no    | yes (if still unassigned)| no                               |
  *
  * * never on a Closed ticket.
  *
@@ -55,6 +57,26 @@ class TicketPolicy
             UserRole::Customer => $ticket->created_by === $user->id
                 && $ticket->status === TicketStatus::Open,
         };
+    }
+
+    /**
+     * Give a ticket to an agent (or move it to another one). Admins only.
+     */
+    public function assign(User $user, Ticket $ticket): bool
+    {
+        return $user->isAdmin();
+    }
+
+    /**
+     * Take an unassigned ticket. Agents only: admins use assign().
+     *
+     * Deliberately does NOT check "is it still unassigned?". That answer must come from the
+     * locked row inside TicketAssignmentService, so an agent who loses a race gets a clear
+     * 409 "already assigned" instead of a confusing 403.
+     */
+    public function accept(User $user, Ticket $ticket): bool
+    {
+        return $user->isAgent();
     }
 
     /**

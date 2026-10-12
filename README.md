@@ -9,7 +9,8 @@ JWT authentication and SLA tracking. Built for the PHP team assessment (`doc/Ass
 |---|---|---|---|
 | Auth and roles | (3, foundation) | Done | [`1.auth.md`](tec-doc/1.auth.md) |
 | Tickets, ticket IDs, permissions | 1, 2, 3 | Done | [`2.tickets.md`](tec-doc/2.tickets.md) |
-| Assignment, conversation, attachments, SLA, business hours, escalation, notifications, search | 4 to 12 | Not started | |
+| Ticket assignment (manual, automatic) and concurrent accept | 4, 5 | Done | [`3.assignment.md`](tec-doc/3.assignment.md) |
+| Conversation, attachments, SLA, business hours, escalation, notifications, search | 6 to 12 | Not started | |
 
 ---
 
@@ -143,8 +144,11 @@ plain files in this repository (`bruno/support-ticket-sla/`), so they are versio
 2. **Ticket → categories** to see the category ids, then **Ticket → create ticket**. It saves the new
    number (for example `TKT-2026-000031`) into the `ticketNumber` variable.
 3. **show ticket**, **update ticket** and the list requests now use that number automatically.
-4. Log in as `admin@example.com` (**Auth → login** again) and run **change status**, **resolve ticket** or
-   **close ticket** on the same number. Log in as another customer and **show ticket** to see the `403`.
+4. Log in as `admin@example.com` (**Auth → login** again) and run **assign ticket (admin)**, **change status**,
+   **resolve ticket** or **close ticket** on the same number. Log in as another customer and **show ticket** to see the `403`.
+5. Try the accept race: log in as `agent1@example.com` and run **accept ticket (agent)** on an unassigned ticket,
+   then log in as `agent2@example.com` and run it again: the second one gets `409`.
+   (If a queue worker is running, automatic assignment may take the ticket first. Set `TICKET_AUTO_ASSIGN=false` to test this.)
 
 **Auth requests**
 
@@ -168,6 +172,8 @@ plain files in this repository (`bruno/support-ticket-sla/`), so they are versio
 | show ticket | GET | `{{baseUrl}}/tickets/{{ticketNumber}}` |
 | update ticket | PATCH | `{{baseUrl}}/tickets/{{ticketNumber}}` |
 | change status | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/status` |
+| assign ticket (admin) | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/assign` (body `agent_id`: 3, 4 or 5 in the demo data) |
+| accept ticket (agent) | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/accept` |
 | resolve ticket | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/resolve` |
 | close ticket | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/close` |
 
@@ -193,9 +199,36 @@ Tests run on in-memory SQLite (see `phpunit.xml`), so they never touch your MySQ
 
 ## 7. Queue and scheduler
 
-Not required for the Auth module. Later modules (email notifications, SLA escalation, CSV import)
-will need them, and this section will list the commands (`php artisan queue:work`,
-`php artisan schedule:work`) when they are added.
+**Required for automatic ticket assignment** (and later for email notifications and SLA escalation).
+Without them everything still works, but new tickets stay unassigned until an admin assigns them or an
+agent accepts them.
+
+Run these in two separate terminals (Laragon: any terminal in the project folder):
+
+```bash
+php artisan queue:work         # processes background jobs (automatic assignment)
+php artisan schedule:work      # runs scheduled commands every minute (the assignment sweep)
+```
+
+| What | Why |
+|---|---|
+| Queue worker (`QUEUE_CONNECTION=database`, the `jobs` table already exists) | A new ticket is assigned by a background job, so creating a ticket stays fast |
+| Scheduler runs `tickets:assign-unassigned` every minute | Re-queues tickets that are still waiting (every agent was unavailable, or a job failed) |
+
+Useful commands:
+
+```bash
+php artisan tickets:assign-unassigned   # run the sweep once by hand
+php artisan queue:failed                # list jobs that failed
+php artisan schedule:list               # show scheduled commands
+```
+
+Settings in `.env`: `TICKET_AUTO_ASSIGN=true|false` (turn automatic assignment on or off) and
+`TICKET_AUTO_ASSIGN_BATCH=200`. Details and reasons: [`tec-doc/3.assignment.md`](tec-doc/3.assignment.md).
+
+**Production:** replace `schedule:work` with one cron entry (Windows: Task Scheduler running it every minute):
+`* * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1`, and keep `queue:work` alive
+with a process manager such as Supervisor.
 
 ## 8. Project structure
 
@@ -210,10 +243,14 @@ app/
   Http/Requests/Api/{Auth,Ticket}/       validation
   Http/Resources/{Auth,Ticket}/          JSON output
   Services/Auth/                         AuthService
-  Services/Ticket/                       TicketService, TicketNumberGenerator
-  Repositories/{Auth,Ticket,Category}/   Interface + implementation
+  Services/Ticket/                       TicketService, TicketAssignmentService, TicketNumberGenerator
+  Services/Ticket/Assignment/            AssignmentStrategy, LeastWorkloadStrategy (automatic assignment rule)
+  Jobs/AutoAssignTicket.php              queued automatic assignment
+  Listeners/Ticket/                      QueueAutoAssignment (new ticket -> queue the job)
+  Console/Commands/                      tickets:assign-unassigned (scheduled sweep)
+  Repositories/{Auth,Ticket,Category,Agent}/   Interface + implementation
   DTOs/{Auth,Ticket}/                    data passed between layers
-  Events/Ticket/                         TicketCreated, TicketUpdated, TicketStatusChanged
+  Events/Ticket/                         TicketCreated, TicketUpdated, TicketStatusChanged, TicketAssigned
   Exceptions/ApiExceptionRenderer.php    all API errors in one JSON format
   OpenApi/                               Swagger definitions
 config/tickets.php                       ticket number prefix/padding, pagination
@@ -245,3 +282,5 @@ The reasons behind each decision are in `tec-doc/`:
 - [`1.auth.md`](tec-doc/1.auth.md): roles as an enum, JWT, layering, middleware, rate limiting, error handling.
 - [`2.tickets.md`](tec-doc/2.tickets.md): ticket number generation and its concurrency test, the permission matrix,
   status flow, indexes, events, and the list of assumptions and known limits.
+- [`3.assignment.md`](tec-doc/3.assignment.md): manual and automatic assignment, the `lockForUpdate` concurrent-accept
+  solution with its parallel-process proof, why a scheduler and queue are needed.

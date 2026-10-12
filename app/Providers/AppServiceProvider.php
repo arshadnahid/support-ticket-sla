@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Ticket\Assignment\AssignmentStrategy;
+use App\Services\Ticket\Assignment\LeastWorkloadStrategy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -14,7 +16,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // The rule that picks an agent for automatic assignment. Swap the class to change it.
+        $this->app->bind(AssignmentStrategy::class, LeastWorkloadStrategy::class);
     }
 
     /**

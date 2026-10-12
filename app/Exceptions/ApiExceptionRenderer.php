@@ -54,6 +54,10 @@ class ApiExceptionRenderer
         $exceptions->render(fn (InvalidTicketTransitionException $e, Request $request) => $this->when($request, fn () => $this->sendErrors($e->getMessage(), [], Response::HTTP_CONFLICT)
         ));
 
+        // The ticket can't be assigned (already taken by another agent, or already resolved/closed).
+        $exceptions->render(fn (TicketAssignmentException $e, Request $request) => $this->when($request, fn () => $this->sendErrors($e->getMessage(), [], Response::HTTP_CONFLICT)
+        ));
+
         $exceptions->render(fn (ThrottleRequestsException $e, Request $request) => $this->when($request, fn () => $this->sendErrors(__('apiresponse.TEXT_TOO_MANY_REQUESTS'), [], Response::HTTP_TOO_MANY_REQUESTS)
             ->withHeaders($e->getHeaders())
         ));

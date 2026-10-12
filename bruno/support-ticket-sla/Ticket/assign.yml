@@ -1,0 +1,24 @@
+info:
+  name: assign ticket (admin)
+  type: http
+  seq: 11
+
+http:
+  method: POST
+  url: "{{baseUrl}}/tickets/{{ticketNumber}}/assign"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "agent_id": 3
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

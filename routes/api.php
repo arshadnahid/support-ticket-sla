@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\v1\Auth\AuthController;
 use App\Http\Controllers\Api\v1\Ticket\CategoryController;
+use App\Http\Controllers\Api\v1\Ticket\TicketAssignmentController;
 use App\Http\Controllers\Api\v1\Ticket\TicketController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,5 +39,8 @@ Route::middleware(['auth:api', 'active'])->group(function () {
         Route::post('{ticket}/status', 'changeStatus');
         Route::post('{ticket}/resolve', 'resolve');
         Route::post('{ticket}/close', 'close');
+
+        Route::post('{ticket}/assign', [TicketAssignmentController::class, 'assign']);
+        Route::post('{ticket}/accept', [TicketAssignmentController::class, 'accept']);
     });
 });

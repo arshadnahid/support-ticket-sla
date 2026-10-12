@@ -383,6 +383,117 @@
                 ]
             }
         },
+        "/api/tickets/{ticket}/assign": {
+            "post": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Assign a ticket to an agent",
+                "description": "Admin only. Gives the ticket to an active support agent, replacing the current one if there is one. The agent does not have to be marked available. Resolved and closed tickets cannot be assigned.",
+                "operationId": "ticketsAssign",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "agent_id"
+                                ],
+                                "properties": {
+                                    "agent_id": {
+                                        "description": "User id of an active agent",
+                                        "type": "integer",
+                                        "example": 3
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Ticket assigned",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tickets/{ticket}/accept": {
+            "post": {
+                "tags": [
+                    "Tickets"
+                ],
+                "summary": "Accept an unassigned ticket",
+                "description": "Agents only. Takes an unassigned ticket for yourself. If two agents accept at the same time, exactly one succeeds and the other gets 409. Accepting a ticket that is already yours succeeds without changing anything.",
+                "operationId": "ticketsAccept",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The ticket is now yours",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TicketEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/tickets": {
             "get": {
                 "tags": [
@@ -1070,6 +1181,12 @@
                                 "$ref": "#/components/schemas/TicketUser"
                             }
                         ],
+                        "nullable": true
+                    },
+                    "assigned_at": {
+                        "description": "When the current assignee got the ticket",
+                        "type": "string",
+                        "format": "date-time",
                         "nullable": true
                     },
                     "due_at": {

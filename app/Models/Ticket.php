@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'number', 'subject', 'description', 'priority', 'status',
-    'category_id', 'created_by', 'assigned_to',
+    'category_id', 'created_by', 'assigned_to', 'assigned_at',
     'due_at', 'resolved_at', 'closed_at',
 ])]
 class Ticket extends Model
@@ -31,6 +31,7 @@ class Ticket extends Model
             'category_id' => 'integer',
             'created_by' => 'integer',
             'assigned_to' => 'integer',
+            'assigned_at' => 'datetime',
             'due_at' => 'datetime',
             'resolved_at' => 'datetime',
             'closed_at' => 'datetime',

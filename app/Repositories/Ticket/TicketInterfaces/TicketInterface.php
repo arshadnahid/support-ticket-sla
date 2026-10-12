@@ -32,6 +32,14 @@ interface TicketInterface
     public function paginateFor(User $user, TicketListScope $scope, int $perPage): LengthAwarePaginator;
 
     /**
+     * Ids of active tickets nobody has taken yet, most urgent first (critical before low),
+     * then oldest first. Feeds the scheduled automatic-assignment sweep.
+     *
+     * @return list<int>
+     */
+    public function unassignedActiveIds(int $limit): array;
+
+    /**
      * Eager-load everything TicketResource needs.
      */
     public function loadRelations(Ticket $ticket): Ticket;

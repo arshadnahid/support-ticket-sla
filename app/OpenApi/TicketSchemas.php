@@ -46,6 +46,7 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'category', ref: '#/components/schemas/Category'),
         new OA\Property(property: 'created_by', ref: '#/components/schemas/TicketUser'),
         new OA\Property(property: 'assigned_to', ref: '#/components/schemas/TicketUser', nullable: true),
+        new OA\Property(property: 'assigned_at', description: 'When the current assignee got the ticket', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'due_at', description: 'SLA deadline (set by the SLA module)', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'resolved_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'closed_at', type: 'string', format: 'date-time', nullable: true),

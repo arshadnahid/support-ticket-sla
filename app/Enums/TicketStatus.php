@@ -37,6 +37,14 @@ enum TicketStatus: string
         };
     }
 
+    /**
+     * Still needs work (not resolved or closed).
+     */
+    public function isActive(): bool
+    {
+        return in_array($this, self::active(), true);
+    }
+
     public function canTransitionTo(self $to): bool
     {
         return in_array($to, $this->allowedTransitions(), true);
