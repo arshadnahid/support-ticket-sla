@@ -28,6 +28,20 @@ use OpenApi\Attributes as OA;
     in: 'query',
     schema: new OA\Schema(type: 'integer', maximum: 100, minimum: 1, example: 15),
 )]
+#[OA\Parameter(
+    parameter: 'StatusFilter',
+    name: 'status',
+    description: 'Only tickets with this status',
+    in: 'query',
+    schema: new OA\Schema(type: 'string', enum: ['open', 'in_progress', 'waiting_for_customer', 'resolved', 'closed']),
+)]
+#[OA\Parameter(
+    parameter: 'TicketSort',
+    name: 'sort',
+    description: 'Order of the results. `sla_deadline`: earliest SLA deadline first, tickets without one last. `created_asc`: oldest first. `created_desc`: newest first. Replaces the default order of the endpoint.',
+    in: 'query',
+    schema: new OA\Schema(type: 'string', enum: ['sla_deadline', 'created_asc', 'created_desc']),
+)]
 #[OA\Response(
     response: 'Forbidden',
     description: 'You are not allowed to do this',

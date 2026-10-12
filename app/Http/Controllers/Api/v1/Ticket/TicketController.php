@@ -39,6 +39,8 @@ class TicketController extends Controller
         parameters: [
             new OA\Parameter(ref: '#/components/parameters/Page'),
             new OA\Parameter(ref: '#/components/parameters/PerPage'),
+            new OA\Parameter(ref: '#/components/parameters/StatusFilter'),
+            new OA\Parameter(ref: '#/components/parameters/TicketSort'),
         ],
         responses: [
             new OA\Response(response: 200, description: 'A page of tickets', content: new OA\JsonContent(ref: '#/components/schemas/TicketListEnvelope')),
@@ -54,13 +56,15 @@ class TicketController extends Controller
     #[OA\Get(
         path: '/api/tickets/active',
         operationId: 'ticketsActive',
-        description: 'Open, in-progress and waiting-for-customer tickets, earliest SLA deadline first (tickets without a deadline last).',
+        description: 'Open, in-progress and waiting-for-customer tickets, earliest SLA deadline first (tickets without a deadline last). Any logged-in, enabled user may call it; results are filtered by role: customers see their own tickets, agents see tickets assigned to them plus the unassigned queue, admins see all.',
         summary: 'List upcoming / active tickets',
         security: [['bearerAuth' => []]],
         tags: ['Tickets'],
         parameters: [
             new OA\Parameter(ref: '#/components/parameters/Page'),
             new OA\Parameter(ref: '#/components/parameters/PerPage'),
+            new OA\Parameter(ref: '#/components/parameters/StatusFilter'),
+            new OA\Parameter(ref: '#/components/parameters/TicketSort'),
         ],
         responses: [
             new OA\Response(response: 200, description: 'A page of active tickets', content: new OA\JsonContent(ref: '#/components/schemas/TicketListEnvelope')),
@@ -76,13 +80,15 @@ class TicketController extends Controller
     #[OA\Get(
         path: '/api/tickets/resolved',
         operationId: 'ticketsResolved',
-        description: 'Resolved and closed tickets, most recently updated first.',
+        description: 'Resolved and closed tickets, most recently updated first. Any logged-in, enabled user may call it; results are filtered by role: customers see their own tickets, agents see tickets assigned to them plus the unassigned queue, admins see all.',
         summary: 'List resolved / closed tickets',
         security: [['bearerAuth' => []]],
         tags: ['Tickets'],
         parameters: [
             new OA\Parameter(ref: '#/components/parameters/Page'),
             new OA\Parameter(ref: '#/components/parameters/PerPage'),
+            new OA\Parameter(ref: '#/components/parameters/StatusFilter'),
+            new OA\Parameter(ref: '#/components/parameters/TicketSort'),
         ],
         responses: [
             new OA\Response(response: 200, description: 'A page of resolved or closed tickets', content: new OA\JsonContent(ref: '#/components/schemas/TicketListEnvelope')),
@@ -263,7 +269,13 @@ class TicketController extends Controller
     {
         Gate::authorize('viewAny', Ticket::class);
 
-        $tickets = $this->ticketService->list($request->user(), $scope, $request->perPage());
+        $tickets = $this->ticketService->list(
+            $request->user(),
+            $scope,
+            $request->perPage(),
+            $request->status(),
+            $request->sort(),
+        );
 
         return $this->sendResponse(null, TicketResource::collection($tickets));
     }

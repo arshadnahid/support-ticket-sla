@@ -11,6 +11,16 @@ http:
       value: application/json
   auth: inherit
 
+docs: |-
+  Open, in-progress and waiting-for-customer tickets, earliest SLA deadline first (no deadline last). Use it for a work queue / dashboard of tickets that still need attention.
+
+  Who can call it: any logged-in, enabled user (Bearer token). Results are filtered by role:
+  - customer: only tickets they created
+  - agent: tickets assigned to them plus the unassigned queue
+  - admin: all tickets
+
+  Query: page (default 1), per_page (default 15).
+
 settings:
   encodeUrl: true
   timeout: 0

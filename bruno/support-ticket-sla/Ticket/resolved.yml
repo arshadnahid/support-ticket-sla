@@ -11,6 +11,16 @@ http:
       value: application/json
   auth: inherit
 
+docs: |-
+  Resolved and closed tickets, most recently updated first. Use it for history and reporting on finished work.
+
+  Who can call it: any logged-in, enabled user (Bearer token). Results are filtered by role:
+  - customer: only tickets they created
+  - agent: tickets assigned to them plus the unassigned queue
+  - admin: all tickets
+
+  Query: page (default 1), per_page (default 15).
+
 settings:
   encodeUrl: true
   timeout: 0

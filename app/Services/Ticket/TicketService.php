@@ -5,6 +5,7 @@ namespace App\Services\Ticket;
 use App\DTOs\Ticket\CreateTicketDTO;
 use App\DTOs\Ticket\UpdateTicketDTO;
 use App\Enums\TicketListScope;
+use App\Enums\TicketSort;
 use App\Enums\TicketStatus;
 use App\Events\Ticket\TicketCreated;
 use App\Events\Ticket\TicketStatusChanged;
@@ -31,9 +32,9 @@ class TicketService
     /**
      * @return LengthAwarePaginator<int, Ticket>
      */
-    public function list(User $user, TicketListScope $scope, int $perPage): LengthAwarePaginator
+    public function list(User $user, TicketListScope $scope, int $perPage, ?TicketStatus $status = null, ?TicketSort $sort = null): LengthAwarePaginator
     {
-        return $this->tickets->paginateFor($user, $scope, $perPage);
+        return $this->tickets->paginateFor($user, $scope, $perPage, $status, $sort);
     }
 
     public function show(Ticket $ticket): Ticket

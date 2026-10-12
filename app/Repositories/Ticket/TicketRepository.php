@@ -4,6 +4,8 @@ namespace App\Repositories\Ticket;
 
 use App\Enums\TicketListScope;
 use App\Enums\TicketPriority;
+use App\Enums\TicketSort;
+use App\Enums\TicketStatus;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Repositories\Ticket\TicketInterfaces\TicketInterface;
@@ -39,12 +41,13 @@ class TicketRepository implements TicketInterface
         return $ticket;
     }
 
-    public function paginateFor(User $user, TicketListScope $scope, int $perPage): LengthAwarePaginator
+    public function paginateFor(User $user, TicketListScope $scope, int $perPage, ?TicketStatus $status = null, ?TicketSort $sort = null): LengthAwarePaginator
     {
         return Ticket::query()
             ->visibleTo($user)
             ->with(self::RELATIONS)
-            ->tap(fn (Builder $query) => $this->applyScope($query, $scope))
+            ->when($status, fn (Builder $query) => $query->where('status', $status))
+            ->tap(fn (Builder $query) => $this->applyScope($query, $scope, $sort))
             ->paginate($perPage);
     }
 
@@ -71,14 +74,43 @@ class TicketRepository implements TicketInterface
         return $ticket->load(self::RELATIONS);
     }
 
-    private function applyScope(Builder $query, TicketListScope $scope): void
+    /**
+     * An explicit ?sort= replaces the scope's default order; the scope's own filter still applies.
+     */
+    private function applySort(Builder $query, TicketListScope $scope, TicketSort $sort): void
     {
         match ($scope) {
+            TicketListScope::Active => $query->active(),
+            TicketListScope::Finished => $query->finished(),
+            TicketListScope::All => null,
+        };
+
+        match ($sort) {
+            TicketSort::SlaDeadline => $this->bySlaDeadline($query),
+            TicketSort::CreatedAsc => $query->orderBy('created_at')->orderBy('id'),
+            TicketSort::CreatedDesc => $query->orderByDesc('created_at')->orderByDesc('id'),
+        };
+    }
+
+    /**
+     * Earliest SLA deadline first, tickets without one last.
+     */
+    private function bySlaDeadline(Builder $query): void
+    {
+        $query->orderByRaw('due_at is null')->orderBy('due_at')->orderBy('id');
+    }
+
+    private function applyScope(Builder $query, TicketListScope $scope, ?TicketSort $sort): void
+    {
+        if ($sort !== null) {
+            $this->applySort($query, $scope, $sort);
+
+            return;
+        }
+
+        match ($scope) {
             // Upcoming first: earliest SLA deadline on top, tickets without one last.
-            TicketListScope::Active => $query->active()
-                ->orderByRaw('due_at is null')
-                ->orderBy('due_at')
-                ->orderBy('id'),
+            TicketListScope::Active => $query->active()->tap($this->bySlaDeadline(...)),
 
             // Most recently finished first.
             TicketListScope::Finished => $query->finished()

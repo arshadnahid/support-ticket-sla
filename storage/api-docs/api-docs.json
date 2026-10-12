@@ -508,6 +508,12 @@
                     },
                     {
                         "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "$ref": "#/components/parameters/StatusFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/TicketSort"
                     }
                 ],
                 "responses": {
@@ -614,7 +620,7 @@
                     "Tickets"
                 ],
                 "summary": "List upcoming / active tickets",
-                "description": "Open, in-progress and waiting-for-customer tickets, earliest SLA deadline first (tickets without a deadline last).",
+                "description": "Open, in-progress and waiting-for-customer tickets, earliest SLA deadline first (tickets without a deadline last). Any logged-in, enabled user may call it; results are filtered by role: customers see their own tickets, agents see tickets assigned to them plus the unassigned queue, admins see all.",
                 "operationId": "ticketsActive",
                 "parameters": [
                     {
@@ -622,6 +628,12 @@
                     },
                     {
                         "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "$ref": "#/components/parameters/StatusFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/TicketSort"
                     }
                 ],
                 "responses": {
@@ -655,7 +667,7 @@
                     "Tickets"
                 ],
                 "summary": "List resolved / closed tickets",
-                "description": "Resolved and closed tickets, most recently updated first.",
+                "description": "Resolved and closed tickets, most recently updated first. Any logged-in, enabled user may call it; results are filtered by role: customers see their own tickets, agents see tickets assigned to them plus the unassigned queue, admins see all.",
                 "operationId": "ticketsResolved",
                 "parameters": [
                     {
@@ -663,6 +675,12 @@
                     },
                     {
                         "$ref": "#/components/parameters/PerPage"
+                    },
+                    {
+                        "$ref": "#/components/parameters/StatusFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/TicketSort"
                     }
                 ],
                 "responses": {
@@ -1474,6 +1492,34 @@
                     "example": 15,
                     "maximum": 100,
                     "minimum": 1
+                }
+            },
+            "StatusFilter": {
+                "name": "status",
+                "in": "query",
+                "description": "Only tickets with this status",
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "in_progress",
+                        "waiting_for_customer",
+                        "resolved",
+                        "closed"
+                    ]
+                }
+            },
+            "TicketSort": {
+                "name": "sort",
+                "in": "query",
+                "description": "Order of the results. `sla_deadline`: earliest SLA deadline first, tickets without one last. `created_asc`: oldest first. `created_desc`: newest first. Replaces the default order of the endpoint.",
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "sla_deadline",
+                        "created_asc",
+                        "created_desc"
+                    ]
                 }
             }
         },

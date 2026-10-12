@@ -9,7 +9,8 @@ JWT authentication and SLA tracking. Built for the PHP team assessment (`doc/Ass
 |---|---|---|---|
 | Auth and roles | (3, foundation) | Done | [`1.auth.md`](tec-doc/1.auth.md) |
 | Tickets, ticket IDs, permissions | 1, 2, 3 | Done | [`2.tickets.md`](tec-doc/2.tickets.md) |
-| Ticket assignment (manual, automatic) and concurrent accept | 4, 5 | Done | [`3.assignment.md`](tec-doc/3.assignment.md) |
+| Ticket assignment (manual, automatic) | 4 | Done | [`4.ticket-assignment.md`](tec-doc/4.ticket-assignment.md) |
+| Concurrent ticket assignment | 5 | Done | [`5.concurrent-assignment.md`](tec-doc/5.concurrent-assignment.md) |
 | Conversation, attachments, SLA, business hours, escalation, notifications, search | 6 to 12 | Not started | |
 
 ---
@@ -224,7 +225,7 @@ php artisan schedule:list               # show scheduled commands
 ```
 
 Settings in `.env`: `TICKET_AUTO_ASSIGN=true|false` (turn automatic assignment on or off) and
-`TICKET_AUTO_ASSIGN_BATCH=200`. Details and reasons: [`tec-doc/3.assignment.md`](tec-doc/3.assignment.md).
+`TICKET_AUTO_ASSIGN_BATCH=200`. Details and reasons: [`tec-doc/4.ticket-assignment.md`](tec-doc/4.ticket-assignment.md).
 
 **Production:** replace `schedule:work` with one cron entry (Windows: Task Scheduler running it every minute):
 `* * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1`, and keep `queue:work` alive
@@ -282,5 +283,5 @@ The reasons behind each decision are in `tec-doc/`:
 - [`1.auth.md`](tec-doc/1.auth.md): roles as an enum, JWT, layering, middleware, rate limiting, error handling.
 - [`2.tickets.md`](tec-doc/2.tickets.md): ticket number generation and its concurrency test, the permission matrix,
   status flow, indexes, events, and the list of assumptions and known limits.
-- [`3.assignment.md`](tec-doc/3.assignment.md): manual and automatic assignment, the `lockForUpdate` concurrent-accept
-  solution with its parallel-process proof, why a scheduler and queue are needed.
+- [`4.ticket-assignment.md`](tec-doc/4.ticket-assignment.md): manual and automatic assignment, the scheduler and queue, events, limits.
+- [`5.concurrent-assignment.md`](tec-doc/5.concurrent-assignment.md): the `lockForUpdate` concurrent-accept solution with its parallel-process proof.

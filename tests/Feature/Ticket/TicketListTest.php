@@ -66,6 +66,49 @@ class TicketListTest extends TicketTestCase
         $this->assertSame([$sooner->number, $later->number, $noDue->number], $numbers);
     }
 
+    public function test_list_can_be_filtered_by_status(): void
+    {
+        $this->ticketFor($this->customer);
+        $closed = $this->ticketFor($this->customer, ['status' => TicketStatus::Closed]);
+
+        $this->as($this->customer)
+            ->getJson('/api/tickets?status=closed')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.number', $closed->number);
+
+        $this->as($this->customer)
+            ->getJson('/api/tickets?status=nonsense')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('status');
+    }
+
+    public function test_list_can_be_sorted(): void
+    {
+        $old = $this->ticketFor($this->customer, ['created_at' => now()->subDays(3), 'due_at' => now()->addDays(2)]);
+        $mid = $this->ticketFor($this->customer, ['created_at' => now()->subDays(2)]);
+        $new = $this->ticketFor($this->customer, ['created_at' => now()->subDay(), 'due_at' => now()->addHour()]);
+
+        $sorted = fn (string $sort) => $this->as($this->customer)->getJson('/api/tickets?sort='.$sort)->json('data.*.number');
+
+        $this->assertSame([$new->number, $mid->number, $old->number], $sorted('created_desc'));
+        $this->assertSame([$old->number, $mid->number, $new->number], $sorted('created_asc'));
+        $this->assertSame([$new->number, $old->number, $mid->number], $sorted('sla_deadline'));
+
+        $this->as($this->customer)->getJson('/api/tickets?sort=bogus')->assertUnprocessable()->assertJsonValidationErrors('sort');
+    }
+
+    public function test_sort_on_active_list_keeps_the_active_filter(): void
+    {
+        $open = $this->ticketFor($this->customer);
+        $this->ticketFor($this->customer, ['status' => TicketStatus::Closed]);
+
+        $this->as($this->customer)
+            ->getJson('/api/tickets/active?sort=created_asc')
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.number', $open->number);
+    }
+
     public function test_list_is_paginated(): void
     {
         Ticket::factory()->count(5)->createdBy($this->customer)->create(['category_id' => $this->category->id]);

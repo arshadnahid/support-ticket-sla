@@ -3,6 +3,8 @@
 namespace App\Repositories\Ticket\TicketInterfaces;
 
 use App\Enums\TicketListScope;
+use App\Enums\TicketSort;
+use App\Enums\TicketStatus;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -29,7 +31,7 @@ interface TicketInterface
      *
      * @return LengthAwarePaginator<int, Ticket>
      */
-    public function paginateFor(User $user, TicketListScope $scope, int $perPage): LengthAwarePaginator;
+    public function paginateFor(User $user, TicketListScope $scope, int $perPage, ?TicketStatus $status = null, ?TicketSort $sort = null): LengthAwarePaginator;
 
     /**
      * Ids of active tickets nobody has taken yet, most urgent first (critical before low),
