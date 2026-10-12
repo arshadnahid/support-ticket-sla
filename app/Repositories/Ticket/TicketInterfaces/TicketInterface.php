@@ -6,6 +6,7 @@ use App\DTOs\Ticket\TicketListFilters;
 use App\Enums\TicketListScope;
 use App\Models\Ticket;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface TicketInterface
@@ -47,6 +48,31 @@ interface TicketInterface
      * @return list<int>
      */
     public function slaEscalationCandidateIds(int $limit): array;
+
+    /**
+     * Headline numbers for the dashboard, over the tickets $user may see, judged at $now:
+     * open_tickets, unassigned, critical, sla_breached and sla_approaching (all active tickets
+     * only), plus resolved and closed.
+     *
+     * @return array<string, int>
+     */
+    public function dashboardCounts(User $user, CarbonInterface $now): array;
+
+    /**
+     * Active tickets per priority, over the tickets $user may see: priority value => count
+     * (priorities with no tickets are absent).
+     *
+     * @return array<string, int>
+     */
+    public function activeCountByPriority(User $user): array;
+
+    /**
+     * Active tickets per assigned agent, over the tickets $user may see (unassigned tickets are
+     * not included), busiest first.
+     *
+     * @return list<array{agent_id: int, name: string, active_tickets: int, sla_breached: int}>
+     */
+    public function activeCountByAgent(User $user, CarbonInterface $now): array;
 
     /**
      * Eager-load everything TicketResource needs.

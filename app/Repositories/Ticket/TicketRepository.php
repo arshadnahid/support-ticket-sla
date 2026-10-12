@@ -7,7 +7,9 @@ use App\Enums\TicketListScope;
 use App\Enums\TicketPriority;
 use App\Enums\TicketSort;
 use App\Models\Ticket;
+use App\Enums\TicketStatus;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use App\Repositories\Ticket\TicketInterfaces\TicketInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -84,6 +86,77 @@ class TicketRepository implements TicketInterface
             ->orderBy('id')
             ->limit($limit)
             ->pluck('id')
+            ->all();
+    }
+
+    public function dashboardCounts(User $user, CarbonInterface $now): array
+    {
+        $active = array_column(TicketStatus::active(), 'value');
+        $in = implode(',', array_fill(0, count($active), '?'));
+        $at = $now->toDateTimeString();
+
+        // One query for every headline number: each SUM(CASE ...) counts the tickets matching one rule.
+        $row = Ticket::query()
+            ->visibleTo($user)
+            ->toBase()
+            ->selectRaw(
+                "COALESCE(SUM(CASE WHEN status IN ($in) THEN 1 ELSE 0 END), 0) AS open_tickets,
+                 COALESCE(SUM(CASE WHEN status IN ($in) AND assigned_to IS NULL THEN 1 ELSE 0 END), 0) AS unassigned,
+                 COALESCE(SUM(CASE WHEN status IN ($in) AND priority = ? THEN 1 ELSE 0 END), 0) AS critical,
+                 COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0) AS resolved,
+                 COALESCE(SUM(CASE WHEN status = ? THEN 1 ELSE 0 END), 0) AS closed,
+                 COALESCE(SUM(CASE WHEN status IN ($in) AND due_at < ? THEN 1 ELSE 0 END), 0) AS sla_breached,
+                 COALESCE(SUM(CASE WHEN status IN ($in) AND due_at >= ? AND sla_warning_at <= ? THEN 1 ELSE 0 END), 0) AS sla_approaching",
+                [
+                    ...$active,
+                    ...$active,
+                    ...$active, TicketPriority::Critical->value,
+                    TicketStatus::Resolved->value,
+                    TicketStatus::Closed->value,
+                    ...$active, $at,
+                    ...$active, $at, $at,
+                ],
+            )
+            ->first();
+
+        return array_map('intval', (array) $row);
+    }
+
+    public function activeCountByPriority(User $user): array
+    {
+        return Ticket::query()
+            ->visibleTo($user)
+            ->active()
+            ->toBase()
+            ->selectRaw('priority, COUNT(*) AS total')
+            ->groupBy('priority')
+            ->pluck('total', 'priority')
+            ->map(fn ($total) => (int) $total)
+            ->all();
+    }
+
+    public function activeCountByAgent(User $user, CarbonInterface $now): array
+    {
+        $at = $now->toDateTimeString();
+
+        return Ticket::query()
+            ->visibleTo($user)
+            ->active()
+            ->whereNotNull('tickets.assigned_to')
+            ->join('users', 'users.id', '=', 'tickets.assigned_to')
+            ->toBase()
+            ->selectRaw('users.id AS agent_id, users.name AS name, COUNT(*) AS active_tickets,
+                COALESCE(SUM(CASE WHEN tickets.due_at < ? THEN 1 ELSE 0 END), 0) AS sla_breached', [$at])
+            ->groupBy('users.id', 'users.name')
+            ->orderByDesc('active_tickets')
+            ->orderBy('users.name')
+            ->get()
+            ->map(fn ($r) => [
+                'agent_id' => (int) $r->agent_id,
+                'name' => $r->name,
+                'active_tickets' => (int) $r->active_tickets,
+                'sla_breached' => (int) $r->sla_breached,
+            ])
             ->all();
     }
 

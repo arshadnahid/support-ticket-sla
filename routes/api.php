@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\v1\Auth\AuthController;
+use App\Http\Controllers\Api\v1\Dashboard\DashboardController;
 use App\Http\Controllers\Api\v1\Ticket\CategoryController;
 use App\Http\Controllers\Api\v1\Ticket\TicketAssignmentController;
 use App\Http\Controllers\Api\v1\Ticket\TicketAttachmentController;
@@ -27,6 +28,7 @@ Route::prefix('auth')->group(function () {
 // decided per ticket by TicketPolicy, so no role: middleware is needed here.
 Route::middleware(['auth:api', 'active'])->group(function () {
     Route::get('categories', [CategoryController::class, 'index']);
+    Route::get('dashboard', [DashboardController::class, 'show']);
 
     Route::prefix('tickets')->controller(TicketController::class)->group(function () {
         // Fixed paths first, otherwise {ticket} would swallow "active" and "resolved".

@@ -1,0 +1,36 @@
+info:
+  name: dashboard
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/dashboard"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+docs: |-
+  Ticket numbers for the logged-in user, counted over the tickets they may see:
+  customer = own tickets, agent = assigned to them + the unassigned queue, admin = everything.
+
+  summary (active = open, in_progress, waiting_for_customer):
+  - open_tickets: active tickets
+  - unassigned: active tickets nobody has taken
+  - critical: active critical-priority tickets
+  - resolved, closed: finished tickets
+  - sla_breached, sla_approaching: active tickets past their deadline / past their warning time (staff only)
+
+  by_priority: active tickets per low | medium | high | critical (all four always present)
+
+  by_agent (staff only): active tickets per assigned agent, busiest first, with how many are SLA breached.
+  An agent only sees their own row.
+
+  Customers do not get sla_breached, sla_approaching or by_agent.
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

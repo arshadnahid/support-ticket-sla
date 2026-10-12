@@ -335,6 +335,135 @@
                 ]
             }
         },
+        "/api/dashboard": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Dashboard",
+                "description": "Ticket numbers for the logged-in user, counted over the tickets they may see: customers their own tickets, agents the tickets assigned to them plus the unassigned queue, admins all tickets.\n\n`open_tickets`, `unassigned`, `critical`, `sla_breached` and `sla_approaching` count **active** tickets only (open, in progress, waiting for customer). `resolved` and `closed` count finished tickets.\n\n**Staff only** (agents and admins): `sla_breached`, `sla_approaching` and `by_agent`. Customers do not get these keys. For an agent, `by_agent` only contains themselves.",
+                "operationId": "dashboardShow",
+                "responses": {
+                    "200": {
+                        "description": "Dashboard numbers",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "allOf": [
+                                        {
+                                            "$ref": "#/components/schemas/ApiResponse"
+                                        },
+                                        {
+                                            "properties": {
+                                                "data": {
+                                                    "properties": {
+                                                        "summary": {
+                                                            "properties": {
+                                                                "open_tickets": {
+                                                                    "description": "Active tickets",
+                                                                    "type": "integer",
+                                                                    "example": 42
+                                                                },
+                                                                "unassigned": {
+                                                                    "description": "Active tickets nobody has taken",
+                                                                    "type": "integer",
+                                                                    "example": 5
+                                                                },
+                                                                "critical": {
+                                                                    "description": "Active critical-priority tickets",
+                                                                    "type": "integer",
+                                                                    "example": 3
+                                                                },
+                                                                "resolved": {
+                                                                    "type": "integer",
+                                                                    "example": 20
+                                                                },
+                                                                "closed": {
+                                                                    "type": "integer",
+                                                                    "example": 80
+                                                                },
+                                                                "sla_breached": {
+                                                                    "description": "Staff only",
+                                                                    "type": "integer",
+                                                                    "example": 4
+                                                                },
+                                                                "sla_approaching": {
+                                                                    "description": "Staff only",
+                                                                    "type": "integer",
+                                                                    "example": 6
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        },
+                                                        "by_priority": {
+                                                            "description": "Active tickets per priority",
+                                                            "properties": {
+                                                                "low": {
+                                                                    "type": "integer",
+                                                                    "example": 10
+                                                                },
+                                                                "medium": {
+                                                                    "type": "integer",
+                                                                    "example": 20
+                                                                },
+                                                                "high": {
+                                                                    "type": "integer",
+                                                                    "example": 9
+                                                                },
+                                                                "critical": {
+                                                                    "type": "integer",
+                                                                    "example": 3
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        },
+                                                        "by_agent": {
+                                                            "description": "Staff only. Active tickets per assigned agent, busiest first",
+                                                            "type": "array",
+                                                            "items": {
+                                                                "properties": {
+                                                                    "agent_id": {
+                                                                        "type": "integer",
+                                                                        "example": 2
+                                                                    },
+                                                                    "name": {
+                                                                        "type": "string",
+                                                                        "example": "Rahim"
+                                                                    },
+                                                                    "active_tickets": {
+                                                                        "type": "integer",
+                                                                        "example": 12
+                                                                    },
+                                                                    "sla_breached": {
+                                                                        "type": "integer",
+                                                                        "example": 1
+                                                                    }
+                                                                },
+                                                                "type": "object"
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/categories": {
             "get": {
                 "tags": [
@@ -2239,6 +2368,10 @@
         {
             "name": "Categories",
             "description": "Ticket categories"
+        },
+        {
+            "name": "Dashboard",
+            "description": "Ticket numbers for the logged-in user"
         }
     ]
 }

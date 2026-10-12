@@ -172,6 +172,7 @@ plain files in this repository (`bruno/support-ticket-sla/`), so they are versio
 | Request | Method | URL |
 |---|---|---|
 | categories | GET | `{{baseUrl}}/categories` |
+| dashboard | GET | `{{baseUrl}}/dashboard` |
 | create ticket | POST | `{{baseUrl}}/tickets` |
 | list tickets | GET | `{{baseUrl}}/tickets?page=1&per_page=15` |
 | list active tickets | GET | `{{baseUrl}}/tickets/active` |

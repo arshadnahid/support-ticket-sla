@@ -9,6 +9,7 @@ use OpenApi\Attributes as OA;
  */
 #[OA\Tag(name: 'Tickets', description: 'Create, view, update, resolve and close support tickets')]
 #[OA\Tag(name: 'Categories', description: 'Ticket categories')]
+#[OA\Tag(name: 'Dashboard', description: 'Ticket numbers for the logged-in user')]
 #[OA\Schema(
     schema: 'TicketUser',
     description: 'Creator or assignee. `email` is only included for staff.',
