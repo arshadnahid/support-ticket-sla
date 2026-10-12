@@ -134,7 +134,16 @@
             dom_id: '#swagger-ui',
             urls: urls,
             "urls.primaryName": "{{ $documentationTitle }}",
-            operationsSorter: {!! isset($operationsSorter) ? '"' . $operationsSorter . '"' : 'null' !!},
+            // Create a ticket, List tickets, View a ticket, Update, Change status, Resolve, then Close; everything else keeps document order.
+            operationsSorter: function (a, b) {
+                const order = ['post /api/tickets', 'get /api/tickets', 'get /api/tickets/{ticket}', 'patch /api/tickets/{ticket}',
+                    'patch /api/tickets/{ticket}/status', 'patch /api/tickets/{ticket}/resolve', 'patch /api/tickets/{ticket}/close'];
+                const rank = (op) => {
+                    const i = order.indexOf(op.get('method') + ' ' + op.get('path'));
+                    return i === -1 ? order.length : i;
+                };
+                return rank(a) - rank(b);
+            },
             configUrl: {!! isset($configUrl) ? '"' . $configUrl . '"' : 'null' !!},
             validatorUrl: {!! isset($validatorUrl) ? '"' . $validatorUrl . '"' : 'null' !!},
             oauth2RedirectUrl: "{{ route('l5-swagger.'.$documentation.'.oauth2_callback', [], $useAbsolutePath) }}",

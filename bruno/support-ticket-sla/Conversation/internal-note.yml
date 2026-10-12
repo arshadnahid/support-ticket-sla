@@ -1,0 +1,29 @@
+info:
+  name: add internal note (staff)
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{baseUrl}}/tickets/{{ticketNumber}}/replies"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "body": "Customer seems confused, check the billing system.",
+        "is_internal": true
+      }
+  auth: inherit
+
+docs: |-
+  Internal note: staff only (assigned agent, admin). A customer gets 403.
+  The note and its files are never shown to customers.
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

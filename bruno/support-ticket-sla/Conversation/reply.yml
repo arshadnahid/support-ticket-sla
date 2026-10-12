@@ -1,0 +1,28 @@
+info:
+  name: reply to ticket
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/tickets/{{ticketNumber}}/replies"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "body": "Please try clearing your cache and sign in again."
+      }
+  auth: inherit
+
+docs: |-
+  Adds a public reply (JSON, text only). To include files use 'reply with files'.
+  Who: the customer who owns the ticket, the assigned agent, admins. 409 on a closed ticket.
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

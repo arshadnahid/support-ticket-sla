@@ -29,6 +29,43 @@ class TicketController extends Controller
 
     public function __construct(private readonly TicketService $ticketService) {}
 
+    #[OA\Post(
+        path: '/api/tickets',
+        operationId: 'ticketsStore',
+        description: 'Creates a ticket with status `open` and a new unique number such as `TKT-2026-000001`. `priority` defaults to `medium`.
+
+**Who can create:** customers only. Agents and admins get **403**; they work on tickets customers raise. The ticket is owned by the customer who creates it and starts unassigned.',
+        summary: 'Create a ticket (Customer)',
+        security: [['bearerAuth' => []]],
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['subject', 'description', 'category_id'],
+                properties: [
+                    new OA\Property(property: 'subject', type: 'string', maxLength: 255, example: 'Cannot log in'),
+                    new OA\Property(property: 'description', type: 'string', maxLength: 10000, example: 'I get an error after entering my password.'),
+                    new OA\Property(property: 'priority', type: 'string', enum: ['low', 'medium', 'high', 'critical'], example: 'high'),
+                    new OA\Property(property: 'category_id', description: 'Id from GET /api/categories', type: 'integer', example: 1),
+                ],
+            ),
+        ),
+        tags: ['Tickets'],
+        responses: [
+            new OA\Response(response: 201, description: 'Ticket created', content: new OA\JsonContent(ref: '#/components/schemas/TicketEnvelope')),
+            new OA\Response(ref: '#/components/responses/Unauthenticated', response: 401),
+            new OA\Response(ref: '#/components/responses/Forbidden', response: 403),
+            new OA\Response(ref: '#/components/responses/ValidationError', response: 422),
+        ],
+    )]
+    public function store(StoreTicketRequest $request): JsonResponse
+    {
+        Gate::authorize('create', Ticket::class);
+
+        $ticket = $this->ticketService->create($request->toDTO(), $request->user());
+
+        return $this->sendCreatedResponse('Ticket created', new TicketResource($ticket));
+    }
+
     #[OA\Get(
         path: '/api/tickets',
         operationId: 'ticketsIndex',
@@ -39,7 +76,17 @@ class TicketController extends Controller
         parameters: [
             new OA\Parameter(ref: '#/components/parameters/Page'),
             new OA\Parameter(ref: '#/components/parameters/PerPage'),
+            new OA\Parameter(ref: '#/components/parameters/Keyword'),
+            new OA\Parameter(ref: '#/components/parameters/TicketNumberFilter'),
             new OA\Parameter(ref: '#/components/parameters/StatusFilter'),
+            new OA\Parameter(ref: '#/components/parameters/PriorityFilter'),
+            new OA\Parameter(ref: '#/components/parameters/CategoryFilter'),
+            new OA\Parameter(ref: '#/components/parameters/AssignedToFilter'),
+            new OA\Parameter(ref: '#/components/parameters/UnassignedFilter'),
+            new OA\Parameter(ref: '#/components/parameters/CustomerFilter'),
+            new OA\Parameter(ref: '#/components/parameters/CreatedFrom'),
+            new OA\Parameter(ref: '#/components/parameters/CreatedTo'),
+            new OA\Parameter(ref: '#/components/parameters/SlaFilter'),
             new OA\Parameter(ref: '#/components/parameters/TicketSort'),
         ],
         responses: [
@@ -63,7 +110,17 @@ class TicketController extends Controller
         parameters: [
             new OA\Parameter(ref: '#/components/parameters/Page'),
             new OA\Parameter(ref: '#/components/parameters/PerPage'),
+            new OA\Parameter(ref: '#/components/parameters/Keyword'),
+            new OA\Parameter(ref: '#/components/parameters/TicketNumberFilter'),
             new OA\Parameter(ref: '#/components/parameters/StatusFilter'),
+            new OA\Parameter(ref: '#/components/parameters/PriorityFilter'),
+            new OA\Parameter(ref: '#/components/parameters/CategoryFilter'),
+            new OA\Parameter(ref: '#/components/parameters/AssignedToFilter'),
+            new OA\Parameter(ref: '#/components/parameters/UnassignedFilter'),
+            new OA\Parameter(ref: '#/components/parameters/CustomerFilter'),
+            new OA\Parameter(ref: '#/components/parameters/CreatedFrom'),
+            new OA\Parameter(ref: '#/components/parameters/CreatedTo'),
+            new OA\Parameter(ref: '#/components/parameters/SlaFilter'),
             new OA\Parameter(ref: '#/components/parameters/TicketSort'),
         ],
         responses: [
@@ -87,7 +144,17 @@ class TicketController extends Controller
         parameters: [
             new OA\Parameter(ref: '#/components/parameters/Page'),
             new OA\Parameter(ref: '#/components/parameters/PerPage'),
+            new OA\Parameter(ref: '#/components/parameters/Keyword'),
+            new OA\Parameter(ref: '#/components/parameters/TicketNumberFilter'),
             new OA\Parameter(ref: '#/components/parameters/StatusFilter'),
+            new OA\Parameter(ref: '#/components/parameters/PriorityFilter'),
+            new OA\Parameter(ref: '#/components/parameters/CategoryFilter'),
+            new OA\Parameter(ref: '#/components/parameters/AssignedToFilter'),
+            new OA\Parameter(ref: '#/components/parameters/UnassignedFilter'),
+            new OA\Parameter(ref: '#/components/parameters/CustomerFilter'),
+            new OA\Parameter(ref: '#/components/parameters/CreatedFrom'),
+            new OA\Parameter(ref: '#/components/parameters/CreatedTo'),
+            new OA\Parameter(ref: '#/components/parameters/SlaFilter'),
             new OA\Parameter(ref: '#/components/parameters/TicketSort'),
         ],
         responses: [
@@ -99,40 +166,6 @@ class TicketController extends Controller
     public function resolved(ListTicketsRequest $request): JsonResponse
     {
         return $this->listing($request, TicketListScope::Finished);
-    }
-
-    #[OA\Post(
-        path: '/api/tickets',
-        operationId: 'ticketsStore',
-        description: 'Creates a ticket with status `open` and a new unique number such as `TKT-2026-000001`. `priority` defaults to `medium`.',
-        summary: 'Create a ticket',
-        security: [['bearerAuth' => []]],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['subject', 'description', 'category_id'],
-                properties: [
-                    new OA\Property(property: 'subject', type: 'string', maxLength: 255, example: 'Cannot log in'),
-                    new OA\Property(property: 'description', type: 'string', maxLength: 10000, example: 'I get an error after entering my password.'),
-                    new OA\Property(property: 'priority', type: 'string', enum: ['low', 'medium', 'high', 'critical'], example: 'high'),
-                    new OA\Property(property: 'category_id', description: 'Id from GET /api/categories', type: 'integer', example: 1),
-                ],
-            ),
-        ),
-        tags: ['Tickets'],
-        responses: [
-            new OA\Response(response: 201, description: 'Ticket created', content: new OA\JsonContent(ref: '#/components/schemas/TicketEnvelope')),
-            new OA\Response(ref: '#/components/responses/Unauthenticated', response: 401),
-            new OA\Response(ref: '#/components/responses/ValidationError', response: 422),
-        ],
-    )]
-    public function store(StoreTicketRequest $request): JsonResponse
-    {
-        Gate::authorize('create', Ticket::class);
-
-        $ticket = $this->ticketService->create($request->toDTO(), $request->user());
-
-        return $this->sendCreatedResponse('Ticket created', new TicketResource($ticket));
     }
 
     #[OA\Get(
@@ -192,10 +225,35 @@ class TicketController extends Controller
         return $this->sendUpdatedResponse('Ticket updated', new TicketResource($ticket));
     }
 
-    #[OA\Post(
+    #[OA\Patch(
         path: '/api/tickets/{ticket}/status',
         operationId: 'ticketsChangeStatus',
-        description: 'Allowed moves: open -> in_progress / waiting_for_customer / resolved / closed; in_progress -> waiting_for_customer / resolved / closed; waiting_for_customer -> in_progress / resolved / closed; resolved -> in_progress (reopen) / closed. `closed` is final. Customers may only close their own ticket.',
+        description: '**Who can do what**
+
+| Role | May change status of | To which status |
+|------|----------------------|-----------------|
+| Admin | any ticket | any allowed move (table below) |
+| Agent | only tickets assigned to them (an unassigned ticket must be accepted first) | any allowed move |
+| Customer | only their own tickets | `closed` only |
+
+Anyone else gets **403**. Role and ownership are checked first, then the move itself.
+
+**Allowed moves** (anything else returns **409**, including sending the current status again)
+
+| From | To |
+|------|----|
+| `open` | `in_progress`, `waiting_for_customer`, `resolved`, `closed` |
+| `in_progress` | `waiting_for_customer`, `resolved`, `closed` |
+| `waiting_for_customer` | `in_progress`, `resolved`, `closed` |
+| `resolved` | `in_progress` (reopen), `closed` |
+| `closed` | none, `closed` is final |
+
+**Side effects**
+- `resolved` sets `resolved_at`; `closed` sets `closed_at`.
+- Reopening a resolved ticket (`in_progress`) clears `resolved_at`.
+- Only `open`, `in_progress` and `waiting_for_customer` tickets are active, so only they count towards the SLA.
+
+Shortcuts: `PATCH /tickets/{ticket}/resolve` and `PATCH /tickets/{ticket}/close`.',
         summary: 'Change a ticket status',
         security: [['bearerAuth' => []]],
         requestBody: new OA\RequestBody(
@@ -223,7 +281,7 @@ class TicketController extends Controller
         return $this->transition($ticket, $request->status(), $request->user());
     }
 
-    #[OA\Post(
+    #[OA\Patch(
         path: '/api/tickets/{ticket}/resolve',
         operationId: 'ticketsResolve',
         description: 'Shortcut for setting the status to `resolved`. Agents (assigned) and admins only.',
@@ -244,7 +302,7 @@ class TicketController extends Controller
         return $this->transition($ticket, TicketStatus::Resolved, $request->user());
     }
 
-    #[OA\Post(
+    #[OA\Patch(
         path: '/api/tickets/{ticket}/close',
         operationId: 'ticketsClose',
         description: 'Shortcut for setting the status to `closed` (final). The ticket owner, the assigned agent and admins may close a ticket.',
@@ -273,8 +331,7 @@ class TicketController extends Controller
             $request->user(),
             $scope,
             $request->perPage(),
-            $request->status(),
-            $request->sort(),
+            $request->filters(),
         );
 
         return $this->sendResponse(null, TicketResource::collection($tickets));
@@ -286,6 +343,6 @@ class TicketController extends Controller
 
         $ticket = $this->ticketService->changeStatus($ticket, $to, $actor);
 
-        return $this->sendUpdatedResponse('Ticket status changed to '.$to->label(), new TicketResource($ticket));
+        return $this->sendUpdatedResponse('Ticket status changed to ' . $to->label(), new TicketResource($ticket));
     }
 }

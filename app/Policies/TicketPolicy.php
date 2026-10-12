@@ -14,11 +14,13 @@ use App\Models\User;
  * | Action        | Admin | Agent                    | Customer                         |
  * |---------------|-------|--------------------------|----------------------------------|
  * | view          | all   | assigned to them or free | own tickets                      |
- * | create        | yes   | yes                      | yes                              |
+ * | create        | no    | no                       | yes                              |
  * | update        | any*  | assigned to them*        | own, only while status is Open*  |
  * | changeStatus  | any   | assigned to them         | own, and only to Closed          |
  * | assign        | yes   | no                       | no                               |
  * | accept        | no    | yes (if still unassigned)| no                               |
+ * | reply / attach| yes   | assigned to them         | own tickets                      |
+ * | internal note | yes   | assigned to them         | no                               |
  *
  * * never on a Closed ticket.
  *
@@ -31,9 +33,12 @@ class TicketPolicy
         return true;
     }
 
+    /**
+     * Only customers raise tickets; staff work on the ones customers create.
+     */
     public function create(User $user): bool
     {
-        return true;
+        return $user->isCustomer();
     }
 
     public function view(User $user, Ticket $ticket): bool
@@ -77,6 +82,27 @@ class TicketPolicy
     public function accept(User $user, Ticket $ticket): bool
     {
         return $user->isAgent();
+    }
+
+    /**
+     * Reply on the ticket or attach files to it. Whether the ticket is still open for
+     * conversation (not Closed) is checked by TicketConversationService.
+     */
+    public function reply(User $user, Ticket $ticket): bool
+    {
+        return match ($user->role) {
+            UserRole::Admin => true,
+            UserRole::Agent => $ticket->assigned_to === $user->id,
+            UserRole::Customer => $ticket->created_by === $user->id,
+        };
+    }
+
+    /**
+     * Internal notes: staff who may reply. A customer asking for one gets 403, not a silent public reply.
+     */
+    public function addInternalNote(User $user, Ticket $ticket): bool
+    {
+        return $user->isStaff() && $this->reply($user, $ticket);
     }
 
     /**

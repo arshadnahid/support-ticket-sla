@@ -28,6 +28,17 @@ class StoreTicketRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'priority.enum' => 'The selected priority is invalid. Allowed values: '
+                .implode(', ', array_column(TicketPriority::cases(), 'value')).'.',
+        ];
+    }
+
     public function toDTO(): CreateTicketDTO
     {
         return new CreateTicketDTO(

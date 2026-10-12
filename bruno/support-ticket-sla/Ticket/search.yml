@@ -1,0 +1,24 @@
+info:
+  name: search tickets
+  type: http
+  seq: 15
+
+http:
+  method: GET
+  url: "{{baseUrl}}/tickets?q=login&status=open&priority=high&created_from=2026-10-01&created_to=2026-10-31&sort=created_desc&page=1&per_page=15"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+docs: |-
+  Example search: open, high priority tickets mentioning "login" that were created in October 2026, newest first.
+  Remove or change any parameter. Others you can add: number, category_id, assigned_to, unassigned=true,
+  customer_id, sla. See "list tickets" for the full list.
+  An empty result returns 404 with an empty data list (same as the other lists).
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

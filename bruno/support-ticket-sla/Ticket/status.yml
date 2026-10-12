@@ -4,7 +4,7 @@ info:
   seq: 8
 
 http:
-  method: POST
+  method: PATCH
   url: "{{baseUrl}}/tickets/{{ticketNumber}}/status"
   headers:
     - name: Accept
@@ -16,6 +16,29 @@ http:
         "status": "in_progress"
       }
   auth: inherit
+
+docs: |-
+  Move a ticket to a new status. Body: status = open | in_progress | waiting_for_customer | resolved | closed
+
+  Who can do what:
+  - Admin: any ticket, any allowed move
+  - Agent: only tickets assigned to them (accept an unassigned ticket first), any allowed move
+  - Customer: only their own tickets, and only to closed
+  Anyone else gets 403.
+
+  Allowed moves (anything else is 409, including sending the current status again):
+  - open: in_progress, waiting_for_customer, resolved, closed
+  - in_progress: waiting_for_customer, resolved, closed
+  - waiting_for_customer: in_progress, resolved, closed
+  - resolved: in_progress (reopen), closed
+  - closed: none (final)
+
+  Side effects:
+  - resolved sets resolved_at; closed sets closed_at
+  - reopening a resolved ticket (in_progress) clears resolved_at
+  - only open, in_progress and waiting_for_customer count towards the SLA
+
+  Shortcuts: PATCH /tickets/{{ticketNumber}}/resolve and /close
 
 settings:
   encodeUrl: true

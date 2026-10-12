@@ -1,0 +1,46 @@
+info:
+  name: create ticket (Customer)
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/tickets"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "subject": "Cannot log in",
+        "description": "I get an error after entering my password.",
+        "priority": "critical",
+        "category_id": 2
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          bru.setEnvVar("ticketNumber", res.body.data.number);
+        }
+
+docs: |-
+  Create a ticket. Customers only: agents and admins get 403 (they work on tickets customers raise). Log in as a customer first.
+
+  Body:
+  - subject (required, max 255)
+  - description (required, max 10000)
+  - category_id (required, an active category from the categories request)
+  - priority (optional): low | medium | high | critical, defaults to medium. An invalid value returns 422 listing the allowed values.
+
+  The ticket starts as open, unassigned, owned by the customer, with a number like TKT-2026-000001. On 201 the ticketNumber environment variable is set for the other requests.
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

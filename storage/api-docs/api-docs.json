@@ -494,6 +494,166 @@
                 ]
             }
         },
+        "/api/tickets/{ticket}/attachments": {
+            "get": {
+                "tags": [
+                    "Attachments"
+                ],
+                "summary": "List attachments",
+                "description": "Every file on the ticket and on its replies that you may see. Files on internal notes are only listed for staff. Each entry has a `download_url`.",
+                "operationId": "ticketAttachmentsIndex",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The attachments",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AttachmentListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Attachments"
+                ],
+                "summary": "Upload files to a ticket",
+                "description": "Attaches files to the ticket itself (to attach to a reply, send them with the reply instead). Same people as replying: the owning customer, the assigned agent, admins. Closed tickets return 409.\n\nLimits: up to 5 files per request, 5 MB each. Allowed types: jpg, jpeg, png, gif, webp, pdf, txt, log, csv, docx, xlsx. The file content is checked, not only its name. Files are stored privately and served only through `download_url`.",
+                "operationId": "ticketAttachmentsStore",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "files"
+                                ],
+                                "properties": {
+                                    "files": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Files attached",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/AttachmentListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/tickets/{ticket}/attachments/{attachment}": {
+            "get": {
+                "tags": [
+                    "Attachments"
+                ],
+                "summary": "Download an attachment",
+                "description": "Downloads one file. Requires the Bearer token like every other endpoint (a plain browser link will not work: fetch it with the header and save the response). The file is always sent as a download with `X-Content-Type-Options: nosniff`, never displayed inline. A file on an internal note returns 404 to customers, as if it did not exist.",
+                "operationId": "ticketAttachmentsDownload",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    },
+                    {
+                        "name": "attachment",
+                        "in": "path",
+                        "description": "Attachment id (uuid) from the attachment list",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The file",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/tickets": {
             "get": {
                 "tags": [
@@ -510,7 +670,37 @@
                         "$ref": "#/components/parameters/PerPage"
                     },
                     {
+                        "$ref": "#/components/parameters/Keyword"
+                    },
+                    {
+                        "$ref": "#/components/parameters/TicketNumberFilter"
+                    },
+                    {
                         "$ref": "#/components/parameters/StatusFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PriorityFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CategoryFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/AssignedToFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/UnassignedFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CustomerFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CreatedFrom"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CreatedTo"
+                    },
+                    {
+                        "$ref": "#/components/parameters/SlaFilter"
                     },
                     {
                         "$ref": "#/components/parameters/TicketSort"
@@ -544,8 +734,8 @@
                 "tags": [
                     "Tickets"
                 ],
-                "summary": "Create a ticket",
-                "description": "Creates a ticket with status `open` and a new unique number such as `TKT-2026-000001`. `priority` defaults to `medium`.",
+                "summary": "Create a ticket (Customer)",
+                "description": "Creates a ticket with status `open` and a new unique number such as `TKT-2026-000001`. `priority` defaults to `medium`.\n\n**Who can create:** customers only. Agents and admins get **403**; they work on tickets customers raise. The ticket is owned by the customer who creates it and starts unassigned.",
                 "operationId": "ticketsStore",
                 "requestBody": {
                     "required": true,
@@ -603,6 +793,9 @@
                     "401": {
                         "$ref": "#/components/responses/Unauthenticated"
                     },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationError"
                     }
@@ -630,7 +823,37 @@
                         "$ref": "#/components/parameters/PerPage"
                     },
                     {
+                        "$ref": "#/components/parameters/Keyword"
+                    },
+                    {
+                        "$ref": "#/components/parameters/TicketNumberFilter"
+                    },
+                    {
                         "$ref": "#/components/parameters/StatusFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PriorityFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CategoryFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/AssignedToFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/UnassignedFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CustomerFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CreatedFrom"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CreatedTo"
+                    },
+                    {
+                        "$ref": "#/components/parameters/SlaFilter"
                     },
                     {
                         "$ref": "#/components/parameters/TicketSort"
@@ -677,7 +900,37 @@
                         "$ref": "#/components/parameters/PerPage"
                     },
                     {
+                        "$ref": "#/components/parameters/Keyword"
+                    },
+                    {
+                        "$ref": "#/components/parameters/TicketNumberFilter"
+                    },
+                    {
                         "$ref": "#/components/parameters/StatusFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PriorityFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CategoryFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/AssignedToFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/UnassignedFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CustomerFilter"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CreatedFrom"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CreatedTo"
+                    },
+                    {
+                        "$ref": "#/components/parameters/SlaFilter"
                     },
                     {
                         "$ref": "#/components/parameters/TicketSort"
@@ -824,12 +1077,12 @@
             }
         },
         "/api/tickets/{ticket}/status": {
-            "post": {
+            "patch": {
                 "tags": [
                     "Tickets"
                 ],
                 "summary": "Change a ticket status",
-                "description": "Allowed moves: open -> in_progress / waiting_for_customer / resolved / closed; in_progress -> waiting_for_customer / resolved / closed; waiting_for_customer -> in_progress / resolved / closed; resolved -> in_progress (reopen) / closed. `closed` is final. Customers may only close their own ticket.",
+                "description": "**Who can do what**\n\n| Role | May change status of | To which status |\n|------|----------------------|-----------------|\n| Admin | any ticket | any allowed move (table below) |\n| Agent | only tickets assigned to them (an unassigned ticket must be accepted first) | any allowed move |\n| Customer | only their own tickets | `closed` only |\n\nAnyone else gets **403**. Role and ownership are checked first, then the move itself.\n\n**Allowed moves** (anything else returns **409**, including sending the current status again)\n\n| From | To |\n|------|----|\n| `open` | `in_progress`, `waiting_for_customer`, `resolved`, `closed` |\n| `in_progress` | `waiting_for_customer`, `resolved`, `closed` |\n| `waiting_for_customer` | `in_progress`, `resolved`, `closed` |\n| `resolved` | `in_progress` (reopen), `closed` |\n| `closed` | none, `closed` is final |\n\n**Side effects**\n- `resolved` sets `resolved_at`; `closed` sets `closed_at`.\n- Reopening a resolved ticket (`in_progress`) clears `resolved_at`.\n- Only `open`, `in_progress` and `waiting_for_customer` tickets are active, so only they count towards the SLA.\n\nShortcuts: `PATCH /tickets/{ticket}/resolve` and `PATCH /tickets/{ticket}/close`.",
                 "operationId": "ticketsChangeStatus",
                 "parameters": [
                     {
@@ -897,7 +1150,7 @@
             }
         },
         "/api/tickets/{ticket}/resolve": {
-            "post": {
+            "patch": {
                 "tags": [
                     "Tickets"
                 ],
@@ -941,7 +1194,7 @@
             }
         },
         "/api/tickets/{ticket}/close": {
-            "post": {
+            "patch": {
                 "tags": [
                     "Tickets"
                 ],
@@ -983,10 +1236,288 @@
                     }
                 ]
             }
+        },
+        "/api/tickets/{ticket}/replies": {
+            "get": {
+                "tags": [
+                    "Conversation"
+                ],
+                "summary": "List replies and notes",
+                "description": "The conversation on a ticket, oldest first. Customers see replies only; **internal agent notes are never included for customers**. Staff (the assigned agent, or any agent while the ticket is unassigned, and admins) see replies and internal notes, marked with `is_internal`. Returns 404 \"not found\" when the ticket has no visible replies yet.",
+                "operationId": "ticketRepliesIndex",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    },
+                    {
+                        "$ref": "#/components/parameters/Page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/PerPage"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page of replies",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReplyListEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Conversation"
+                ],
+                "summary": "Reply to a ticket or add an internal note",
+                "description": "Adds a reply to the ticket, optionally with files. Who may reply: the customer who owns the ticket, the agent it is assigned to, and admins. An agent must accept an unassigned ticket before replying.\n\nSet `is_internal` to `true` to write an **internal note**: only staff may do this (a customer gets 403), and the note and its files are never shown to customers.\n\nSend JSON for text only, or `multipart/form-data` to attach files (`attachments[]`). Files are validated by real content, not just name; see the `attachments` field. Closed tickets return 409.",
+                "operationId": "ticketRepliesStore",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/TicketNumber"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "body"
+                                ],
+                                "properties": {
+                                    "body": {
+                                        "type": "string",
+                                        "maxLength": 10000
+                                    },
+                                    "is_internal": {
+                                        "description": "`true`/`1` = internal note, staff only. Default false.",
+                                        "type": "boolean"
+                                    },
+                                    "attachments": {
+                                        "description": "Up to 5 files, 5 MB each. Allowed: jpg, jpeg, png, gif, webp, pdf, txt, log, csv, docx, xlsx.",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "body"
+                                ],
+                                "properties": {
+                                    "body": {
+                                        "type": "string",
+                                        "example": "Please try clearing your cache and sign in again.",
+                                        "maxLength": 10000
+                                    },
+                                    "is_internal": {
+                                        "description": "true = internal note, staff only. Default false.",
+                                        "type": "boolean",
+                                        "example": false
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Reply added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ReplyEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthenticated"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationError"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
         "schemas": {
+            "Attachment": {
+                "properties": {
+                    "id": {
+                        "description": "Public id (uuid)",
+                        "type": "string",
+                        "format": "uuid",
+                        "example": "5f0e4c1a-6b1e-4f7e-9a3c-2d8b7c1e9f10"
+                    },
+                    "filename": {
+                        "type": "string",
+                        "example": "screenshot.png"
+                    },
+                    "mime_type": {
+                        "description": "Detected from the file content",
+                        "type": "string",
+                        "example": "image/png"
+                    },
+                    "size": {
+                        "description": "Bytes",
+                        "type": "integer",
+                        "example": 48213
+                    },
+                    "reply_id": {
+                        "description": "null = attached to the ticket itself",
+                        "type": "integer",
+                        "example": 7,
+                        "nullable": true
+                    },
+                    "uploaded_by": {
+                        "$ref": "#/components/schemas/TicketUser"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "download_url": {
+                        "description": "Requires the Authorization header",
+                        "type": "string",
+                        "example": "http://support-ticket-sla.test/api/tickets/TKT-2026-000001/attachments/5f0e4c1a-6b1e-4f7e-9a3c-2d8b7c1e9f10"
+                    }
+                },
+                "type": "object"
+            },
+            "Reply": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 7
+                    },
+                    "body": {
+                        "type": "string",
+                        "example": "Please try clearing your cache and sign in again."
+                    },
+                    "is_internal": {
+                        "description": "true = internal note. Only ever returned to staff.",
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "author": {
+                        "$ref": "#/components/schemas/TicketUser"
+                    },
+                    "author_is_staff": {
+                        "type": "boolean",
+                        "example": true
+                    },
+                    "attachments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Attachment"
+                        }
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "type": "object"
+            },
+            "ReplyEnvelope": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                        "properties": {
+                            "data": {
+                                "$ref": "#/components/schemas/Reply"
+                            }
+                        },
+                        "type": "object"
+                    }
+                ]
+            },
+            "ReplyListEnvelope": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                        "properties": {
+                            "data": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Reply"
+                                }
+                            },
+                            "pagination": {
+                                "$ref": "#/components/schemas/Pagination"
+                            }
+                        },
+                        "type": "object"
+                    }
+                ]
+            },
+            "AttachmentListEnvelope": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/ApiResponse"
+                    },
+                    {
+                        "properties": {
+                            "data": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Attachment"
+                                }
+                            }
+                        },
+                        "type": "object"
+                    }
+                ]
+            },
             "User": {
                 "properties": {
                     "id": {
@@ -1208,9 +1739,63 @@
                         "nullable": true
                     },
                     "due_at": {
-                        "description": "SLA deadline (set by the SLA module)",
+                        "description": "Resolution deadline, counted in business hours from creation (see config/sla.php)",
                         "type": "string",
                         "format": "date-time",
+                        "nullable": true
+                    },
+                    "sla": {
+                        "description": "SLA standing. Staff only: omitted for customers.",
+                        "properties": {
+                            "state": {
+                                "description": "Active tickets: how they stand now. Resolved/closed: whether they were finished in time. null = no deadline.",
+                                "properties": {
+                                    "value": {
+                                        "type": "string",
+                                        "example": "approaching",
+                                        "enum": [
+                                            "within",
+                                            "approaching",
+                                            "breached"
+                                        ]
+                                    },
+                                    "label": {
+                                        "type": "string",
+                                        "example": "Approaching SLA breach"
+                                    }
+                                },
+                                "type": "object",
+                                "nullable": true
+                            },
+                            "warning_at": {
+                                "description": "When the ticket starts to count as approaching",
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true
+                            },
+                            "business_minutes_remaining": {
+                                "description": "Working minutes until the deadline; null once finished",
+                                "type": "integer",
+                                "example": 95,
+                                "nullable": true
+                            },
+                            "escalation_level": {
+                                "description": "0 = not escalated, 1 = escalated as approaching, 2 = escalated as breached",
+                                "type": "integer",
+                                "example": 1,
+                                "enum": [
+                                    0,
+                                    1,
+                                    2
+                                ]
+                            },
+                            "escalated_at": {
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true
+                            }
+                        },
+                        "type": "object",
                         "nullable": true
                     },
                     "resolved_at": {
@@ -1494,6 +2079,95 @@
                     "minimum": 1
                 }
             },
+            "Keyword": {
+                "name": "q",
+                "in": "query",
+                "description": "Search text (2 to 100 characters). Matches anywhere in the ticket number, subject or description. Not case sensitive.",
+                "schema": {
+                    "type": "string",
+                    "example": "login",
+                    "maxLength": 100,
+                    "minLength": 2
+                }
+            },
+            "TicketNumberFilter": {
+                "name": "number",
+                "in": "query",
+                "description": "Exact ticket number",
+                "schema": {
+                    "type": "string",
+                    "example": "TKT-2026-000001"
+                }
+            },
+            "PriorityFilter": {
+                "name": "priority",
+                "in": "query",
+                "description": "Only tickets with this priority",
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "low",
+                        "medium",
+                        "high",
+                        "critical"
+                    ]
+                }
+            },
+            "CategoryFilter": {
+                "name": "category_id",
+                "in": "query",
+                "description": "Only tickets in this category (id from GET /api/categories)",
+                "schema": {
+                    "type": "integer",
+                    "example": 1
+                }
+            },
+            "AssignedToFilter": {
+                "name": "assigned_to",
+                "in": "query",
+                "description": "Only tickets assigned to this agent (user id). Cannot be combined with `unassigned`.",
+                "schema": {
+                    "type": "integer",
+                    "example": 3
+                }
+            },
+            "UnassignedFilter": {
+                "name": "unassigned",
+                "in": "query",
+                "description": "`true` = only tickets nobody has taken yet. Cannot be combined with `assigned_to`.",
+                "schema": {
+                    "type": "boolean"
+                }
+            },
+            "CustomerFilter": {
+                "name": "customer_id",
+                "in": "query",
+                "description": "Only tickets created by this customer (user id)",
+                "schema": {
+                    "type": "integer",
+                    "example": 5
+                }
+            },
+            "CreatedFrom": {
+                "name": "created_from",
+                "in": "query",
+                "description": "Created on or after this day (YYYY-MM-DD, UTC)",
+                "schema": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2026-10-01"
+                }
+            },
+            "CreatedTo": {
+                "name": "created_to",
+                "in": "query",
+                "description": "Created on or before this day, the whole day included (YYYY-MM-DD, UTC). Not before `created_from`.",
+                "schema": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2026-10-31"
+                }
+            },
             "StatusFilter": {
                 "name": "status",
                 "in": "query",
@@ -1521,6 +2195,19 @@
                         "created_desc"
                     ]
                 }
+            },
+            "SlaFilter": {
+                "name": "sla",
+                "in": "query",
+                "description": "Only ACTIVE tickets in this SLA state: `within`, `approaching` (most of the SLA time used) or `breached` (past the deadline). Tickets without a deadline match none.",
+                "schema": {
+                    "type": "string",
+                    "enum": [
+                        "within",
+                        "approaching",
+                        "breached"
+                    ]
+                }
             }
         },
         "securitySchemes": {
@@ -1533,6 +2220,14 @@
         }
     },
     "tags": [
+        {
+            "name": "Conversation",
+            "description": "Customer replies, agent replies and internal agent notes"
+        },
+        {
+            "name": "Attachments",
+            "description": "Files on tickets and replies (private storage, authorised download)"
+        },
         {
             "name": "Auth",
             "description": "Authentication & token management"

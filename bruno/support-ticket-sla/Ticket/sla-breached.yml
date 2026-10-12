@@ -1,0 +1,24 @@
+info:
+  name: list sla breached tickets
+  type: http
+  seq: 14
+
+http:
+  method: GET
+  url: "{{baseUrl}}/tickets?sla=breached&sort=sla_deadline&page=1&per_page=15"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+docs: |-
+  Active tickets that are past their resolution deadline, earliest deadline first.
+  Change sla to `approaching` (most of the SLA time used) or `within`.
+  Each ticket has an `sla` block for staff (state, business_minutes_remaining, escalation_level).
+  Customers never get the `sla` block, so this is mainly for agents and admins.
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

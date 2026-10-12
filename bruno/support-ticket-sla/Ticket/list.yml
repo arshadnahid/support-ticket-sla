@@ -6,6 +6,60 @@ info:
 http:
   method: GET
   url: "{{baseUrl}}/tickets?page=1&per_page=15&sort=created_desc"
+  params:
+    - name: page
+      value: "1"
+      type: query
+    - name: per_page
+      value: "15"
+      type: query
+    - name: sort
+      value: created_desc
+      type: query
+    - name: q
+      value: ""
+      type: query
+      disabled: true
+    - name: number
+      value: ""
+      type: query
+      disabled: true
+    - name: status
+      value: open
+      type: query
+      disabled: true
+    - name: priority
+      value: high
+      type: query
+      disabled: true
+    - name: category_id
+      value: ""
+      type: query
+      disabled: true
+    - name: assigned_to
+      value: ""
+      type: query
+      disabled: true
+    - name: unassigned
+      value: "true"
+      type: query
+      disabled: true
+    - name: customer_id
+      value: ""
+      type: query
+      disabled: true
+    - name: created_from
+      value: 2026-01-01
+      type: query
+      disabled: true
+    - name: created_to
+      value: 2026-12-31
+      type: query
+      disabled: true
+    - name: sla
+      value: breached
+      type: query
+      disabled: true
   headers:
     - name: Accept
       value: application/json
@@ -13,11 +67,23 @@ http:
 
 docs: |-
   Every ticket the current user may see (customer: own, agent: assigned + unassigned, admin: all).
+  All filters are optional and combine with AND. Filters only narrow the list, they never show more than you may see.
 
   Query:
   - page, per_page (default 15, max 100)
+  - q: keyword (2 to 100 characters), matches anywhere in ticket number, subject or description
+  - number: exact ticket number, e.g. TKT-2026-000001
   - status: open | in_progress | waiting_for_customer | resolved | closed
-  - sort: sla_deadline (earliest deadline first, none last) | created_asc | created_desc (default order)
+  - priority: low | medium | high | critical
+  - category_id: id from the categories request
+  - assigned_to: agent user id, or unassigned=true for tickets nobody has taken (not both)
+  - customer_id: user id of the customer who created the ticket
+  - created_from, created_to: YYYY-MM-DD, whole days, both included (UTC)
+  - sla: within | approaching | breached (active tickets only)
+  - sort: sla_deadline (earliest deadline first, none last) | created_asc | created_desc (default)
+
+  Tick a disabled param in the Params tab to use it.
+  An invalid value returns 422 with the field error, e.g. priority: "The selected priority is invalid. Allowed values: low, medium, high, critical." (this suggestion is only on create/update; the list filter returns Laravel's default message).
 
 settings:
   encodeUrl: true

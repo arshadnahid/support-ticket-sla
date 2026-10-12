@@ -136,9 +136,9 @@ class TicketAuthorizationTest extends TicketTestCase
     {
         $ticket = $this->ticketFor($this->customer, ['status' => TicketStatus::InProgress, 'assigned_to' => $this->agent->id]);
 
-        $this->as($this->otherAgent)->postJson("/api/tickets/{$ticket->number}/resolve")->assertForbidden();
-        $this->as($this->customer)->postJson("/api/tickets/{$ticket->number}/resolve")->assertForbidden();
-        $this->as($this->agent)->postJson("/api/tickets/{$ticket->number}/resolve")->assertOk();
+        $this->as($this->otherAgent)->patchJson("/api/tickets/{$ticket->number}/resolve")->assertForbidden();
+        $this->as($this->customer)->patchJson("/api/tickets/{$ticket->number}/resolve")->assertForbidden();
+        $this->as($this->agent)->patchJson("/api/tickets/{$ticket->number}/resolve")->assertOk();
     }
 
     public function test_customer_can_close_own_ticket_but_not_set_other_statuses(): void
@@ -146,11 +146,11 @@ class TicketAuthorizationTest extends TicketTestCase
         $ticket = $this->ticketFor($this->customer);
 
         $this->as($this->customer)
-            ->postJson("/api/tickets/{$ticket->number}/status", ['status' => 'in_progress'])
+            ->patchJson("/api/tickets/{$ticket->number}/status", ['status' => 'in_progress'])
             ->assertForbidden();
 
         $this->as($this->customer)
-            ->postJson("/api/tickets/{$ticket->number}/close")
+            ->patchJson("/api/tickets/{$ticket->number}/close")
             ->assertOk()
             ->assertJsonPath('data.status.value', 'closed');
     }
@@ -159,7 +159,7 @@ class TicketAuthorizationTest extends TicketTestCase
     {
         $ticket = $this->ticketFor($this->otherCustomer);
 
-        $this->as($this->customer)->postJson("/api/tickets/{$ticket->number}/close")->assertForbidden();
+        $this->as($this->customer)->patchJson("/api/tickets/{$ticket->number}/close")->assertForbidden();
     }
 
     public function test_inactive_user_with_valid_token_is_blocked(): void

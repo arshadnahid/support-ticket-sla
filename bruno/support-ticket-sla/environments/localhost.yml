@@ -8,3 +8,5 @@ variables:
     value: ""
   - name: ticketNumber
     value: ""
+  - name: attachmentId
+    value: ""

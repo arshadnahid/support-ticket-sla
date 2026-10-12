@@ -2,10 +2,10 @@
 
 namespace App\Repositories\Ticket;
 
+use App\DTOs\Ticket\TicketListFilters;
 use App\Enums\TicketListScope;
 use App\Enums\TicketPriority;
 use App\Enums\TicketSort;
-use App\Enums\TicketStatus;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Repositories\Ticket\TicketInterfaces\TicketInterface;
@@ -41,14 +41,16 @@ class TicketRepository implements TicketInterface
         return $ticket;
     }
 
-    public function paginateFor(User $user, TicketListScope $scope, int $perPage, ?TicketStatus $status = null, ?TicketSort $sort = null): LengthAwarePaginator
+    public function paginateFor(User $user, TicketListScope $scope, int $perPage, TicketListFilters $filters): LengthAwarePaginator
     {
         return Ticket::query()
             ->visibleTo($user)
             ->with(self::RELATIONS)
-            ->when($status, fn (Builder $query) => $query->where('status', $status))
-            ->tap(fn (Builder $query) => $this->applyScope($query, $scope, $sort))
-            ->paginate($perPage);
+            ->tap(fn (Builder $query) => $this->applyFilters($query, $filters))
+            ->tap(fn (Builder $query) => $this->applyScope($query, $scope, $filters->sort))
+            ->paginate($perPage)
+            // So next_page_url / prev_page_url keep the search and filters.
+            ->withQueryString();
     }
 
     public function unassignedActiveIds(int $limit): array
@@ -63,6 +65,22 @@ class TicketRepository implements TicketInterface
             ->whereNull('assigned_to')
             ->orderByRaw("$urgency DESC")
             ->orderBy('created_at')
+            ->orderBy('id')
+            ->limit($limit)
+            ->pluck('id')
+            ->all();
+    }
+
+    public function slaEscalationCandidateIds(int $limit): array
+    {
+        $now = now();
+
+        return Ticket::query()
+            ->active()
+            ->where(fn (Builder $q) => $q
+                ->where(fn (Builder $b) => $b->where('escalation_level', '<', 2)->where('due_at', '<', $now))
+                ->orWhere(fn (Builder $w) => $w->where('escalation_level', '<', 1)->where('sla_warning_at', '<=', $now)))
+            ->orderBy('due_at')
             ->orderBy('id')
             ->limit($limit)
             ->pluck('id')
@@ -98,6 +116,39 @@ class TicketRepository implements TicketInterface
     private function bySlaDeadline(Builder $query): void
     {
         $query->orderByRaw('due_at is null')->orderBy('due_at')->orderBy('id');
+    }
+
+    /**
+     * Filters only narrow the list; who may see a ticket is Ticket::visibleTo(), applied before this.
+     */
+    private function applyFilters(Builder $query, TicketListFilters $f): void
+    {
+        $query
+            ->when($f->number, fn (Builder $q, string $number) => $q->where('number', $number))
+            ->when($f->keyword, fn (Builder $q, string $keyword) => $this->matchKeyword($q, $keyword))
+            ->when($f->status, fn (Builder $q) => $q->where('status', $f->status))
+            ->when($f->priority, fn (Builder $q) => $q->where('priority', $f->priority))
+            ->when($f->categoryId, fn (Builder $q, int $id) => $q->where('category_id', $id))
+            ->when($f->assignedTo, fn (Builder $q, int $id) => $q->where('assigned_to', $id))
+            ->when($f->unassigned, fn (Builder $q) => $q->whereNull('assigned_to'))
+            ->when($f->customerId, fn (Builder $q, int $id) => $q->where('created_by', $id))
+            ->when($f->createdFrom, fn (Builder $q, $from) => $q->where('created_at', '>=', $from))
+            ->when($f->createdTo, fn (Builder $q, $to) => $q->where('created_at', '<=', $to))
+            ->when($f->sla, fn (Builder $q) => $q->inSlaState($f->sla));
+    }
+
+    /**
+     * Words anywhere in the number, subject or description. `%`, `_` and `!` typed by the user are
+     * escaped, so they are searched for literally instead of acting as wildcards.
+     */
+    private function matchKeyword(Builder $query, string $keyword): void
+    {
+        $like = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $keyword).'%';
+
+        $query->where(fn (Builder $q) => $q
+            ->whereRaw("number like ? escape '!'", [$like])
+            ->orWhereRaw("subject like ? escape '!'", [$like])
+            ->orWhereRaw("description like ? escape '!'", [$like]));
     }
 
     private function applyScope(Builder $query, TicketListScope $scope, ?TicketSort $sort): void

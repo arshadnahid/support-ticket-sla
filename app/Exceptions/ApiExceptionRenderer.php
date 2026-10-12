@@ -58,6 +58,10 @@ class ApiExceptionRenderer
         $exceptions->render(fn (TicketAssignmentException $e, Request $request) => $this->when($request, fn () => $this->sendErrors($e->getMessage(), [], Response::HTTP_CONFLICT)
         ));
 
+        // The ticket is closed, so it takes no more replies or files.
+        $exceptions->render(fn (TicketConversationException $e, Request $request) => $this->when($request, fn () => $this->sendErrors($e->getMessage(), [], Response::HTTP_CONFLICT)
+        ));
+
         $exceptions->render(fn (ThrottleRequestsException $e, Request $request) => $this->when($request, fn () => $this->sendErrors(__('apiresponse.TEXT_TOO_MANY_REQUESTS'), [], Response::HTTP_TOO_MANY_REQUESTS)
             ->withHeaders($e->getHeaders())
         ));

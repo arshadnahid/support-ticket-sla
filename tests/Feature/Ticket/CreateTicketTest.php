@@ -106,6 +106,14 @@ class CreateTicketTest extends TicketTestCase
         $this->postJson('/api/tickets', $this->validPayload())->assertUnauthorized();
     }
 
+    public function test_only_customers_can_create_tickets(): void
+    {
+        $this->as($this->agent)->postJson('/api/tickets', $this->validPayload())->assertForbidden();
+        $this->as($this->admin)->postJson('/api/tickets', $this->validPayload())->assertForbidden();
+
+        $this->assertDatabaseCount('tickets', 0);
+    }
+
     public function test_categories_endpoint_lists_only_active_categories(): void
     {
         Category::factory()->inactive()->create(['name' => 'Retired']);

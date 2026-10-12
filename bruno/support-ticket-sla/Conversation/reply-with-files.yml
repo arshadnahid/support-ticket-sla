@@ -1,0 +1,36 @@
+info:
+  name: reply with files
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/tickets/{{ticketNumber}}/replies"
+  headers:
+    - name: Accept
+      value: application/json
+  body:
+    type: multipart-form
+    data:
+      - name: body
+        type: text
+        value: See the attached file.
+      - name: is_internal
+        type: text
+        value: "false"
+      - name: attachments[]
+        type: file
+        value:
+          - ./sample.pdf
+  auth: inherit
+
+docs: |-
+  multipart/form-data. Pick real files in the attachments[] row (replace ./sample.pdf).
+  Up to 5 files, 5 MB each. Allowed: jpg, jpeg, png, gif, webp, pdf, txt, log, csv, docx, xlsx.
+  Set is_internal to true for an internal note with files (staff only).
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

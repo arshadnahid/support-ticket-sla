@@ -130,13 +130,13 @@ class TicketAssignmentTest extends TicketTestCase
     {
         $ticket = $this->ticketFor($this->customer);
 
-        $this->as($this->agent)->postJson("/api/tickets/{$ticket->number}/resolve")->assertForbidden();
+        $this->as($this->agent)->patchJson("/api/tickets/{$ticket->number}/resolve")->assertForbidden();
 
         $this->as($this->admin)
             ->postJson("/api/tickets/{$ticket->number}/assign", ['agent_id' => $this->agent->id])
             ->assertOk();
 
-        $this->as($this->agent)->postJson("/api/tickets/{$ticket->number}/resolve")->assertOk();
+        $this->as($this->agent)->patchJson("/api/tickets/{$ticket->number}/resolve")->assertOk();
     }
 
     // ---- agent accepts ------------------------------------------------------

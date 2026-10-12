@@ -47,7 +47,17 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'created_by', ref: '#/components/schemas/TicketUser'),
         new OA\Property(property: 'assigned_to', ref: '#/components/schemas/TicketUser', nullable: true),
         new OA\Property(property: 'assigned_at', description: 'When the current assignee got the ticket', type: 'string', format: 'date-time', nullable: true),
-        new OA\Property(property: 'due_at', description: 'SLA deadline (set by the SLA module)', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'due_at', description: 'Resolution deadline, counted in business hours from creation (see config/sla.php)', type: 'string', format: 'date-time', nullable: true),
+        new OA\Property(property: 'sla', description: 'SLA standing. Staff only: omitted for customers.', nullable: true, properties: [
+            new OA\Property(property: 'state', description: 'Active tickets: how they stand now. Resolved/closed: whether they were finished in time. null = no deadline.', nullable: true, properties: [
+                new OA\Property(property: 'value', type: 'string', enum: ['within', 'approaching', 'breached'], example: 'approaching'),
+                new OA\Property(property: 'label', type: 'string', example: 'Approaching SLA breach'),
+            ], type: 'object'),
+            new OA\Property(property: 'warning_at', description: 'When the ticket starts to count as approaching', type: 'string', format: 'date-time', nullable: true),
+            new OA\Property(property: 'business_minutes_remaining', description: 'Working minutes until the deadline; null once finished', type: 'integer', nullable: true, example: 95),
+            new OA\Property(property: 'escalation_level', description: '0 = not escalated, 1 = escalated as approaching, 2 = escalated as breached', type: 'integer', enum: [0, 1, 2], example: 1),
+            new OA\Property(property: 'escalated_at', type: 'string', format: 'date-time', nullable: true),
+        ], type: 'object'),
         new OA\Property(property: 'resolved_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'closed_at', type: 'string', format: 'date-time', nullable: true),
         new OA\Property(property: 'created_at', type: 'string', format: 'date-time'),

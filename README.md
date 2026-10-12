@@ -11,7 +11,13 @@ JWT authentication and SLA tracking. Built for the PHP team assessment (`doc/Ass
 | Tickets, ticket IDs, permissions | 1, 2, 3 | Done | [`2.tickets.md`](tec-doc/2.tickets.md) |
 | Ticket assignment (manual, automatic) | 4 | Done | [`4.ticket-assignment.md`](tec-doc/4.ticket-assignment.md) |
 | Concurrent ticket assignment | 5 | Done | [`5.concurrent-assignment.md`](tec-doc/5.concurrent-assignment.md) |
-| Conversation, attachments, SLA, business hours, escalation, notifications, search | 6 to 12 | Not started | |
+| Ticket conversation (replies, internal notes) | 6 | Done | [`6.conversation.md`](tec-doc/6.conversation.md) |
+| Attachments | 7 | Done | [`7.attachments.md`](tec-doc/7.attachments.md) |
+| SLA management | 8 | Done | [`8.sla.md`](tec-doc/8.sla.md) |
+| Business hours | 9 | Done | [`9.business-hours.md`](tec-doc/9.business-hours.md) |
+| SLA escalation | 10 | Done | [`10.sla-escalation.md`](tec-doc/10.sla-escalation.md) |
+| Notifications (inbox and per-event settings) | 11 | Not started | Escalation already sends email and stores in-app notifications |
+| Search and filtering | 12 | Done | [`12.search-filtering.md`](tec-doc/12.search-filtering.md) |
 
 ---
 
@@ -172,11 +178,11 @@ plain files in this repository (`bruno/support-ticket-sla/`), so they are versio
 | list resolved-closed tickets | GET | `{{baseUrl}}/tickets/resolved` |
 | show ticket | GET | `{{baseUrl}}/tickets/{{ticketNumber}}` |
 | update ticket | PATCH | `{{baseUrl}}/tickets/{{ticketNumber}}` |
-| change status | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/status` |
+| change status | PATCH | `{{baseUrl}}/tickets/{{ticketNumber}}/status` |
 | assign ticket (admin) | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/assign` (body `agent_id`: 3, 4 or 5 in the demo data) |
 | accept ticket (agent) | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/accept` |
-| resolve ticket | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/resolve` |
-| close ticket | POST | `{{baseUrl}}/tickets/{{ticketNumber}}/close` |
+| resolve ticket | PATCH | `{{baseUrl}}/tickets/{{ticketNumber}}/resolve` |
+| close ticket | PATCH | `{{baseUrl}}/tickets/{{ticketNumber}}/close` |
 
 **Tips**
 - Always send the `Accept: application/json` header (the requests already do).
@@ -215,17 +221,24 @@ php artisan schedule:work      # runs scheduled commands every minute (the assig
 |---|---|
 | Queue worker (`QUEUE_CONNECTION=database`, the `jobs` table already exists) | A new ticket is assigned by a background job, so creating a ticket stays fast |
 | Scheduler runs `tickets:assign-unassigned` every minute | Re-queues tickets that are still waiting (every agent was unavailable, or a job failed) |
+| Scheduler runs `tickets:escalate-sla` every minute | Flags tickets approaching or past their SLA, writes the history entry and queues the email and in-app notifications (also needs the queue worker) |
 
 Useful commands:
 
 ```bash
 php artisan tickets:assign-unassigned   # run the sweep once by hand
+php artisan tickets:escalate-sla        # run the SLA escalation sweep once by hand
+php artisan tickets:recalculate-sla     # after changing config/sla.php: re-apply the rules to open tickets
 php artisan queue:failed                # list jobs that failed
 php artisan schedule:list               # show scheduled commands
 ```
 
 Settings in `.env`: `TICKET_AUTO_ASSIGN=true|false` (turn automatic assignment on or off) and
 `TICKET_AUTO_ASSIGN_BATCH=200`. Details and reasons: [`tec-doc/4.ticket-assignment.md`](tec-doc/4.ticket-assignment.md).
+
+SLA rules (hours per priority, business days and hours, holidays, warning percentage) are in `config/sla.php` and can be
+set from `.env` (`SLA_*`, see `.env.example`). Details: [`tec-doc/8.sla.md`](tec-doc/8.sla.md),
+[`tec-doc/9.business-hours.md`](tec-doc/9.business-hours.md), [`tec-doc/10.sla-escalation.md`](tec-doc/10.sla-escalation.md).
 
 **Production:** replace `schedule:work` with one cron entry (Windows: Task Scheduler running it every minute):
 `* * * * * cd /path/to/project && php artisan schedule:run >> /dev/null 2>&1`, and keep `queue:work` alive
@@ -285,3 +298,7 @@ The reasons behind each decision are in `tec-doc/`:
   status flow, indexes, events, and the list of assumptions and known limits.
 - [`4.ticket-assignment.md`](tec-doc/4.ticket-assignment.md): manual and automatic assignment, the scheduler and queue, events, limits.
 - [`5.concurrent-assignment.md`](tec-doc/5.concurrent-assignment.md): the `lockForUpdate` concurrent-accept solution with its parallel-process proof.
+- [`6.conversation.md`](tec-doc/6.conversation.md): replies, internal notes and how customers are kept from seeing them.
+- [`7.attachments.md`](tec-doc/7.attachments.md): file validation, private storage, size/type limits and secure download.
+- [`8.sla.md`](tec-doc/8.sla.md), [`9.business-hours.md`](tec-doc/9.business-hours.md), [`10.sla-escalation.md`](tec-doc/10.sla-escalation.md): SLA rules and states, the business-hours deadline calculation, and automatic escalation.
+- [`12.search-filtering.md`](tec-doc/12.search-filtering.md): the search and filter parameters of the ticket lists and how they respect who may see which ticket.

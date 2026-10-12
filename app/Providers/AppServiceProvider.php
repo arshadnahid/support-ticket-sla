@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Sla\BusinessHours;
 use App\Services\Ticket\Assignment\AssignmentStrategy;
 use App\Services\Ticket\Assignment\LeastWorkloadStrategy;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -18,6 +19,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // The rule that picks an agent for automatic assignment. Swap the class to change it.
         $this->app->bind(AssignmentStrategy::class, LeastWorkloadStrategy::class);
+
+        // Working days and hours come from config/sla.php. `bind`, not `singleton`, so a changed
+        // setting (or a test that changes it) is picked up on the next resolve.
+        $this->app->bind(BusinessHours::class, fn () => BusinessHours::fromConfig());
     }
 
     /**

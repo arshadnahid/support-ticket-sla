@@ -3,9 +3,9 @@
 namespace App\Services\Ticket;
 
 use App\DTOs\Ticket\CreateTicketDTO;
+use App\DTOs\Ticket\TicketListFilters;
 use App\DTOs\Ticket\UpdateTicketDTO;
 use App\Enums\TicketListScope;
-use App\Enums\TicketSort;
 use App\Enums\TicketStatus;
 use App\Events\Ticket\TicketCreated;
 use App\Events\Ticket\TicketStatusChanged;
@@ -14,6 +14,7 @@ use App\Exceptions\InvalidTicketTransitionException;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Repositories\Ticket\TicketInterfaces\TicketInterface;
+use App\Services\Sla\SlaService;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -27,14 +28,15 @@ class TicketService
     public function __construct(
         private readonly TicketInterface $tickets,
         private readonly TicketNumberGenerator $numbers,
+        private readonly SlaService $sla,
     ) {}
 
     /**
      * @return LengthAwarePaginator<int, Ticket>
      */
-    public function list(User $user, TicketListScope $scope, int $perPage, ?TicketStatus $status = null, ?TicketSort $sort = null): LengthAwarePaginator
+    public function list(User $user, TicketListScope $scope, int $perPage, TicketListFilters $filters): LengthAwarePaginator
     {
-        return $this->tickets->paginateFor($user, $scope, $perPage, $status, $sort);
+        return $this->tickets->paginateFor($user, $scope, $perPage, $filters);
     }
 
     public function show(Ticket $ticket): Ticket
@@ -55,7 +57,7 @@ class TicketService
                 'status' => TicketStatus::Open,
                 'category_id' => $dto->categoryId,
                 'created_by' => $creator->id,
-            ]);
+            ] + $this->sla->deadlinesFor($dto->priority, now()));
 
             TicketCreated::dispatch($ticket, $creator);
 
@@ -75,6 +77,11 @@ class TicketService
 
             if ($changes !== []) {
                 $this->tickets->update($locked, array_map(fn (array $change) => $change['to'], $changes));
+
+                // A different priority means a different SLA: count it again from the creation time.
+                if (isset($changes['priority']) && $locked->status->isActive()) {
+                    $this->tickets->update($locked, $this->sla->recalculation($locked));
+                }
 
                 TicketUpdated::dispatch($locked, $actor, $changes);
             }

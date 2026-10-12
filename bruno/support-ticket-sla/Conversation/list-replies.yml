@@ -1,0 +1,25 @@
+info:
+  name: list replies and notes
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{baseUrl}}/tickets/{{ticketNumber}}/replies?page=1&per_page=15"
+  headers:
+    - name: Accept
+      value: application/json
+  auth: inherit
+
+docs: |-
+  The conversation, oldest first.
+  Customers get public replies only. Internal agent notes are never returned to customers.
+  Staff (assigned agent, any agent while unassigned, admin) also get internal notes (is_internal = true).
+  Returns 404 when there is nothing visible yet.
+  Who: anyone who can view the ticket.
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

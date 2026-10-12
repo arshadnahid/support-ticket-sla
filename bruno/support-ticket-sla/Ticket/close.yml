@@ -4,7 +4,7 @@ info:
   seq: 10
 
 http:
-  method: POST
+  method: PATCH
   url: "{{baseUrl}}/tickets/{{ticketNumber}}/close"
   headers:
     - name: Accept

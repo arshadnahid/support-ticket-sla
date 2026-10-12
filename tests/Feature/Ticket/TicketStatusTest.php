@@ -15,7 +15,7 @@ class TicketStatusTest extends TicketTestCase
         $ticket = $this->ticketFor($this->customer, ['status' => TicketStatus::InProgress, 'assigned_to' => $this->agent->id]);
 
         $this->as($this->agent)
-            ->postJson("/api/tickets/{$ticket->number}/resolve")
+            ->patchJson("/api/tickets/{$ticket->number}/resolve")
             ->assertOk()
             ->assertJsonPath('data.status.value', 'resolved')
             ->assertJsonPath('message', 'Ticket status changed to Resolved');
@@ -32,7 +32,7 @@ class TicketStatusTest extends TicketTestCase
     {
         $ticket = $this->ticketFor($this->customer, ['status' => TicketStatus::Resolved, 'assigned_to' => $this->agent->id]);
 
-        $this->as($this->agent)->postJson("/api/tickets/{$ticket->number}/close")->assertOk();
+        $this->as($this->agent)->patchJson("/api/tickets/{$ticket->number}/close")->assertOk();
 
         $this->assertNotNull($ticket->fresh()->closed_at);
     }
@@ -42,7 +42,7 @@ class TicketStatusTest extends TicketTestCase
         $ticket = $this->ticketFor($this->customer, ['assigned_to' => $this->agent->id, 'status' => TicketStatus::Resolved, 'resolved_at' => now()]);
 
         $this->as($this->agent)
-            ->postJson("/api/tickets/{$ticket->number}/status", ['status' => 'in_progress'])
+            ->patchJson("/api/tickets/{$ticket->number}/status", ['status' => 'in_progress'])
             ->assertOk()
             ->assertJsonPath('data.status.value', 'in_progress')
             ->assertJsonPath('data.resolved_at', null);
@@ -53,7 +53,7 @@ class TicketStatusTest extends TicketTestCase
         $ticket = $this->ticketFor($this->customer, ['status' => TicketStatus::Closed, 'assigned_to' => $this->agent->id]);
 
         $this->as($this->admin)
-            ->postJson("/api/tickets/{$ticket->number}/status", ['status' => 'open'])
+            ->patchJson("/api/tickets/{$ticket->number}/status", ['status' => 'open'])
             ->assertStatus(409)
             ->assertJsonPath('success', false)
             ->assertJsonPath('message', 'A ticket cannot move from "Closed" to "Open".');
@@ -67,12 +67,12 @@ class TicketStatusTest extends TicketTestCase
 
         // open -> open is not a move
         $this->as($this->agent)
-            ->postJson("/api/tickets/{$ticket->number}/status", ['status' => 'open'])
+            ->patchJson("/api/tickets/{$ticket->number}/status", ['status' => 'open'])
             ->assertStatus(409);
 
         // resolve twice
-        $this->as($this->agent)->postJson("/api/tickets/{$ticket->number}/resolve")->assertOk();
-        $this->as($this->agent)->postJson("/api/tickets/{$ticket->number}/resolve")->assertStatus(409);
+        $this->as($this->agent)->patchJson("/api/tickets/{$ticket->number}/resolve")->assertOk();
+        $this->as($this->agent)->patchJson("/api/tickets/{$ticket->number}/resolve")->assertStatus(409);
     }
 
     public function test_every_allowed_transition_works_and_nothing_else(): void
@@ -82,7 +82,7 @@ class TicketStatusTest extends TicketTestCase
                 $ticket = $this->ticketFor($this->customer, ['status' => $from, 'assigned_to' => $this->agent->id]);
 
                 $response = $this->as($this->admin)
-                    ->postJson("/api/tickets/{$ticket->number}/status", ['status' => $to->value]);
+                    ->patchJson("/api/tickets/{$ticket->number}/status", ['status' => $to->value]);
 
                 $from->canTransitionTo($to)
                     ? $response->assertOk()
@@ -96,7 +96,7 @@ class TicketStatusTest extends TicketTestCase
         $ticket = $this->ticketFor($this->customer);
 
         $this->as($this->admin)
-            ->postJson("/api/tickets/{$ticket->number}/status", ['status' => 'banana'])
+            ->patchJson("/api/tickets/{$ticket->number}/status", ['status' => 'banana'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('status');
     }
