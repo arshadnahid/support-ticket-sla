@@ -10,9 +10,13 @@ use Illuminate\Database\Eloquent\Collection;
 
 class AgentRepository implements AgentInterface
 {
-    public function findActiveAgent(int $id): ?User
+    public function findActiveAgent(int $id, bool $lock = false): ?User
     {
-        return User::query()->withRole(UserRole::Agent)->active()->find($id);
+        return User::query()
+            ->withRole(UserRole::Agent)
+            ->active()
+            ->when($lock, fn ($query) => $query->lockForUpdate())
+            ->find($id);
     }
 
     public function availableWithWorkload(bool $lock = false): Collection

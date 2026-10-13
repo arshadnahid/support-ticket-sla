@@ -41,20 +41,25 @@ class TicketAssignmentService
      */
     public function assign(Ticket $ticket, int $agentId, User $actor): Ticket
     {
-        $agent = $this->agents->findActiveAgent($agentId) ?? throw TicketAssignmentException::notAnAgent();
-
-        $locked = DB::transaction(function () use ($ticket, $agent, $actor): Ticket {
+        [$locked, $agent, $assignment] = DB::transaction(function () use ($ticket, $agentId): array {
             $locked = $this->tickets->lockForUpdate($ticket->id);
+
+            // Checked and locked after the ticket (same order as autoAssign), so the agent
+            // cannot be disabled between this check and the commit.
+            $agent = $this->agents->findActiveAgent($agentId, lock: true)
+                ?? throw TicketAssignmentException::notAnAgent();
 
             $this->guardAssignable($locked);
 
             // Already theirs: nothing to change, no event.
-            if ($locked->assigned_to !== $agent->id) {
-                $this->applyAssignment($locked, $agent, AssignmentMethod::Manual, $actor);
-            }
+            $assignment = $locked->assigned_to !== $agent->id ? $this->applyAssignment($locked, $agent) : null;
 
-            return $locked;
+            return [$locked, $agent, $assignment];
         }, attempts: 3);
+
+        if ($assignment !== null) {
+            TicketAssigned::dispatch($locked, $agent, AssignmentMethod::Manual, $actor, $assignment['previous']);
+        }
 
         return $this->tickets->loadRelations($locked);
     }
@@ -66,7 +71,7 @@ class TicketAssignmentService
      */
     public function accept(Ticket $ticket, User $agent): Ticket
     {
-        $locked = DB::transaction(function () use ($ticket, $agent): Ticket {
+        [$locked, $assignment] = DB::transaction(function () use ($ticket, $agent): array {
             // The lock is the whole point: the second agent waits here until the first commits.
             $locked = $this->tickets->lockForUpdate($ticket->id);
 
@@ -74,17 +79,19 @@ class TicketAssignmentService
 
             // Pressing "accept" twice is harmless: it is still theirs.
             if ($locked->assigned_to === $agent->id) {
-                return $locked;
+                return [$locked, null];
             }
 
             if ($locked->assigned_to !== null) {
                 throw TicketAssignmentException::alreadyAssigned();
             }
 
-            $this->applyAssignment($locked, $agent, AssignmentMethod::Accepted, $agent);
-
-            return $locked;
+            return [$locked, $this->applyAssignment($locked, $agent)];
         }, attempts: 3);
+
+        if ($assignment !== null) {
+            TicketAssigned::dispatch($locked, $agent, AssignmentMethod::Accepted, $agent, $assignment['previous']);
+        }
 
         return $this->tickets->loadRelations($locked);
     }
@@ -96,7 +103,7 @@ class TicketAssignmentService
      */
     public function autoAssign(int $ticketId): ?Ticket
     {
-        return DB::transaction(function () use ($ticketId): ?Ticket {
+        $result = DB::transaction(function () use ($ticketId): ?array {
             try {
                 $locked = $this->tickets->lockForUpdate($ticketId);
             } catch (ModelNotFoundException) {
@@ -117,10 +124,18 @@ class TicketAssignmentService
                 return null;
             }
 
-            $this->applyAssignment($locked, $agent, AssignmentMethod::Auto, actor: null);
-
-            return $locked;
+            return [$locked, $agent, $this->applyAssignment($locked, $agent)];
         }, attempts: 3);
+
+        if ($result === null) {
+            return null;
+        }
+
+        [$locked, $agent, $assignment] = $result;
+
+        TicketAssigned::dispatch($locked, $agent, AssignmentMethod::Auto, null, $assignment['previous']);
+
+        return $locked;
     }
 
     /**
@@ -133,13 +148,18 @@ class TicketAssignmentService
         }
     }
 
-    private function applyAssignment(Ticket $locked, User $agent, AssignmentMethod $method, ?User $actor): void
+    /**
+     * Saves the assignment. The caller dispatches TicketAssigned after the transaction commits.
+     *
+     * @return array{previous: int|null}
+     */
+    private function applyAssignment(Ticket $locked, User $agent): array
     {
         $previous = $locked->assigned_to;
 
         $this->tickets->update($locked, ['assigned_to' => $agent->id, 'assigned_at' => now()]);
         $this->agents->recordAssignment($agent);
 
-        TicketAssigned::dispatch($locked, $agent, $method, $actor, $previous);
+        return ['previous' => $previous];
     }
 }

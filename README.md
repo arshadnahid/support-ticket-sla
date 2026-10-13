@@ -64,7 +64,27 @@ php artisan migrate --seed
 
 # 5. Generate the API documentation
 php artisan l5-swagger:generate
+
+# 6. Start the queue worker and the scheduler (two separate terminals, see section 7)
+php artisan queue:work
+php artisan schedule:work
 ```
+
+Step 6 is needed for automatic assignment and for notifications (ticket created, assigned,
+resolved, SLA escalation): their listeners are queued. Without a worker the API still works,
+but those jobs wait in the `jobs` table. Mail is written to `storage/logs/laravel.log`
+(`MAIL_MAILER=log`) until you configure a real mailer.
+
+**Optional, for AI-assisted development (Claude Code):** the project's `CLAUDE.md` asks for
+Laravel Boost. Install it once from the project root; it replaces the bootstrap instructions
+with guidelines tailored to this app:
+
+```bash
+composer require laravel/boost --dev
+php artisan boost:install
+```
+
+Then run `php artisan test` to confirm the installation works (see section 6).
 
 ## 3. Environment (`.env`)
 
@@ -207,9 +227,9 @@ Tests run on in-memory SQLite (see `phpunit.xml`), so they never touch your MySQ
 
 ## 7. Queue and scheduler
 
-**Required for automatic ticket assignment** (and later for email notifications and SLA escalation).
+**Required for automatic ticket assignment, notifications and SLA escalation.**
 Without them everything still works, but new tickets stay unassigned until an admin assigns them or an
-agent accepts them.
+agent accepts them, and no notification is sent.
 
 Run these in two separate terminals (Laragon: any terminal in the project folder):
 
@@ -220,7 +240,7 @@ php artisan schedule:work      # runs scheduled commands every minute (the assig
 
 | What | Why |
 |---|---|
-| Queue worker (`QUEUE_CONNECTION=database`, the `jobs` table already exists) | A new ticket is assigned by a background job, so creating a ticket stays fast |
+| Queue worker (`QUEUE_CONNECTION=database`, the `jobs` table already exists) | A new ticket is assigned by a background job and its listeners (`NotifyTicketCreated`, `NotifyTicketResolved`, `QueueAutoAssignment`) are queued, so creating or changing a ticket stays fast. Restart the worker after code changes: `php artisan queue:restart` |
 | Scheduler runs `tickets:assign-unassigned` every minute | Re-queues tickets that are still waiting (every agent was unavailable, or a job failed) |
 | Scheduler runs `tickets:escalate-sla` every minute | Flags tickets approaching or past their SLA, writes the history entry and queues the email and in-app notifications (also needs the queue worker) |
 

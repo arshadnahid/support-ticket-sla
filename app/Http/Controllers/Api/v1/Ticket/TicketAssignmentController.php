@@ -45,8 +45,7 @@ class TicketAssignmentController extends Controller
     )]
     public function assign(AssignTicketRequest $request, Ticket $ticket): JsonResponse
     {
-        Gate::authorize('assign', $ticket);
-
+        // Authorization ('assign') is done by AssignTicketRequest::authorize(), before validation.
         $ticket = $this->assignment->assign($ticket, $request->agentId(), $request->user());
 
         return $this->sendUpdatedResponse('Ticket assigned', new TicketResource($ticket));

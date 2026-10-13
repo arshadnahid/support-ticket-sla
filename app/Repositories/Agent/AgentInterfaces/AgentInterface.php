@@ -9,8 +9,12 @@ interface AgentInterface
 {
     /**
      * An enabled support agent by id, or null.
+     *
+     * With $lock the row is locked (SELECT ... FOR UPDATE), so the agent cannot be disabled
+     * between this check and the end of the surrounding transaction. Only call with $lock
+     * inside a transaction.
      */
-    public function findActiveAgent(int $id): ?User;
+    public function findActiveAgent(int $id, bool $lock = false): ?User;
 
     /**
      * Agents that can receive tickets right now (role agent, active, available),

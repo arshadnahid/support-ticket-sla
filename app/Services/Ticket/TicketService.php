@@ -46,8 +46,25 @@ class TicketService
 
     public function create(CreateTicketDTO $dto, User $creator): Ticket
     {
-        // Number and ticket are saved in one transaction: if the insert fails the
-        // counter rolls back too, so ticket numbers have no gaps.
+/*  1. Exception inside the closure (insert fails, the SLA calculation throws, a constraint is violated):
+        - Laravel rolls everything back in the transaction.
+          That includes the ticket row and the $this->numbers->next() counter increment,
+          which is what the comment above the call says, so ticket numbers keep no gaps.
+        - The exception is rethrown to the caller of create().
+        - The event is never dispatched, so no notification goes out.
+    2. Deadlock (MySQL picks this transaction as the victim):
+        - Laravel rolls back and re-runs the closure, up to 3 attempts.
+          Each attempt gets a fresh ticket number, because the counter was rolled back.
+        - If an attempt succeeds, the flow continues normally and the event fires once.
+        - If all 3 attempts deadlock, the last exception is thrown. Again, no event.
+    3. Failure at commit time: it's treated the same as a closure failure.
+        The data is rolled back, the exception is thrown, and no event is dispatched.
+*/
+
+
+        // The ticket number and the ticket row are saved in one transaction.
+        // If anything inside fails, both roll back, so ticket numbers have no gaps
+        // and the exception propagates to the caller (no event, no relations load).
         $ticket = DB::transaction(function () use ($dto, $creator): Ticket {
             $ticket = $this->tickets->create([
                 'number' => $this->numbers->next(),
@@ -57,19 +74,26 @@ class TicketService
                 'status' => TicketStatus::Open,
                 'category_id' => $dto->categoryId,
                 'created_by' => $creator->id,
-            ] + $this->sla->deadlinesFor($dto->priority, now()));
-
-            TicketCreated::dispatch($ticket, $creator);
+            ] + $this->sla->deadlinesFor($dto->priority, now())); // SLA due dates derived from priority
 
             return $ticket;
-        }, attempts: 3); // retried if MySQL picks this transaction as a deadlock victim
+            // Retried up to 3 times if MySQL picks this transaction as a deadlock victim;
+            // each retry re-runs the closure and takes a fresh ticket number.
+        }, attempts: 3);
+
+        // Dispatched only after a successful commit, so listeners never see a
+        // rolled-back ticket and a deadlock retry cannot fire the event twice.
+        TicketCreated::dispatch($ticket, $creator);
 
         return $this->tickets->loadRelations($ticket);
     }
 
     public function update(Ticket $ticket, UpdateTicketDTO $dto, User $actor): Ticket
     {
-        $locked = DB::transaction(function () use ($ticket, $dto, $actor): Ticket {
+        // The field update and the SLA recalculation are saved in one transaction.
+        // If anything inside fails, both roll back and the exception propagates
+        // to the caller (no event, no relations load).
+        [$locked, $changes] = DB::transaction(function () use ($ticket, $dto): array {
             // Lock the row so two simultaneous edits cannot overwrite each other silently.
             $locked = $this->tickets->lockForUpdate($ticket->id);
 
@@ -82,12 +106,18 @@ class TicketService
                 if (isset($changes['priority']) && $locked->status->isActive()) {
                     $this->tickets->update($locked, $this->sla->recalculation($locked));
                 }
-
-                TicketUpdated::dispatch($locked, $actor, $changes);
             }
 
-            return $locked;
-        });
+            return [$locked, $changes];
+            // Retried up to 3 times if MySQL picks this transaction as a deadlock victim;
+            // each retry re-runs the closure and locks the row again.
+        }, attempts: 3);
+
+        // Dispatched only after a successful commit, so listeners never see a
+        // rolled-back change and a deadlock retry cannot fire the event twice.
+        if ($changes !== []) {
+            TicketUpdated::dispatch($locked, $actor, $changes);
+        }
 
         return $this->tickets->loadRelations($locked);
     }
@@ -97,7 +127,10 @@ class TicketService
      */
     public function changeStatus(Ticket $ticket, TicketStatus $to, User $actor): Ticket
     {
-        $locked = DB::transaction(function () use ($ticket, $to, $actor): Ticket {
+        // The transition check and the status update are saved in one transaction.
+        // If anything inside fails (including an invalid transition), everything rolls
+        // back and the exception propagates to the caller (no event, no relations load).
+        [$locked, $from] = DB::transaction(function () use ($ticket, $to): array {
             // The status is checked against the locked, up-to-date row. Without the
             // lock, two agents could both "resolve" the same ticket from a stale copy.
             $locked = $this->tickets->lockForUpdate($ticket->id);
@@ -109,10 +142,14 @@ class TicketService
 
             $this->tickets->update($locked, ['status' => $to] + $this->timestampsFor($from, $to));
 
-            TicketStatusChanged::dispatch($locked, $actor, $from, $to);
+            return [$locked, $from];
+            // Retried up to 3 times if MySQL picks this transaction as a deadlock victim;
+            // each retry re-runs the closure and locks the row again.
+        }, attempts: 3);
 
-            return $locked;
-        });
+        // Dispatched only after a successful commit, so listeners never see a
+        // rolled-back status and a deadlock retry cannot fire the event twice.
+        TicketStatusChanged::dispatch($locked, $actor, $from, $to);
 
         return $this->tickets->loadRelations($locked);
     }

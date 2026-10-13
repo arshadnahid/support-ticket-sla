@@ -6,13 +6,14 @@ use App\Enums\UserRole;
 use App\Events\Ticket\TicketCreated;
 use App\Models\User;
 use App\Notifications\TicketCreatedNotification;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Notification;
 
 /**
  * New ticket: the customer gets a confirmation, all active admins hear about it. (The agent
  * is told separately, by NotifyTicketAssigned, once the ticket is assigned.)
  */
-class NotifyTicketCreated
+class NotifyTicketCreated implements ShouldQueue
 {
     public function handle(TicketCreated $event): void
     {

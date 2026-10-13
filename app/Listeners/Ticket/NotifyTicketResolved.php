@@ -5,12 +5,13 @@ namespace App\Listeners\Ticket;
 use App\Enums\TicketStatus;
 use App\Events\Ticket\TicketStatusChanged;
 use App\Notifications\TicketResolvedNotification;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Notification;
 
 /**
  * A ticket moved to Resolved: tell the customer. Other status changes are not announced.
  */
-class NotifyTicketResolved
+class NotifyTicketResolved implements ShouldQueue
 {
     public function handle(TicketStatusChanged $event): void
     {

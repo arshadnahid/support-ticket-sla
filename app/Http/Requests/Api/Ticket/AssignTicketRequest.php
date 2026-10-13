@@ -10,6 +10,15 @@ use Illuminate\Validation\Rule;
 class AssignTicketRequest extends FormRequest
 {
     /**
+     * Checked before validation, so a non-admin gets 403 and learns nothing from the
+     * agent_id rule about which users are active agents.
+     */
+    public function authorize(): bool
+    {
+        return $this->user()->can('assign', $this->route('ticket'));
+    }
+
+    /**
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
