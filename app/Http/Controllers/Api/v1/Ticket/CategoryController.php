@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Api\v1\Ticket;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\Ticket\ListCategoriesRequest;
 use App\Http\Resources\Ticket\CategoryResource;
-use App\Repositories\Category\CategoryInterfaces\CategoryInterface;
+use App\Services\Category\CategoryService;
 use App\Traits\ApiResponses;
 use Illuminate\Http\JsonResponse;
 use OpenApi\Attributes as OA;
@@ -13,8 +14,7 @@ class CategoryController extends Controller
 {
     use ApiResponses;
 
-    // No service layer: listing categories has no business rules to put in one.
-    public function __construct(private readonly CategoryInterface $categories) {}
+    public function __construct(private readonly CategoryService $categoryService) {}
 
     /**
      * List the categories a ticket can be filed under.
@@ -25,6 +25,11 @@ class CategoryController extends Controller
         summary: 'List active ticket categories',
         security: [['bearerAuth' => []]],
         tags: ['Categories'],
+        parameters: [
+            new OA\Parameter(name: 'name', description: 'Part of the category name (not case sensitive)', in: 'query', schema: new OA\Schema(type: 'string', maxLength: 100, example: 'billing')),
+            new OA\Parameter(ref: '#/components/parameters/Page'),
+            new OA\Parameter(ref: '#/components/parameters/PerPage'),
+        ],
         responses: [
             new OA\Response(
                 response: 200,
@@ -42,8 +47,10 @@ class CategoryController extends Controller
             new OA\Response(ref: '#/components/responses/AccountInactive', response: 403),
         ],
     )]
-    public function index(): JsonResponse
+    public function index(ListCategoriesRequest $request): JsonResponse
     {
-        return $this->sendResponse(null, CategoryResource::collection($this->categories->active()));
+        $categories = $this->categoryService->getActiveCategories($request->toDTO());
+
+        return $this->sendResponse(null, CategoryResource::collection($categories));
     }
 }
