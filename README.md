@@ -16,7 +16,7 @@ JWT authentication and SLA tracking. Built for the PHP team assessment (`doc/Ass
 | SLA management | 8 | Done | [`8.sla.md`](tec-doc/8.sla.md) |
 | Business hours | 9 | Done | [`9.business-hours.md`](tec-doc/9.business-hours.md) |
 | SLA escalation | 10 | Done | [`10.sla-escalation.md`](tec-doc/10.sla-escalation.md) |
-| Notifications (inbox and per-event settings) | 11 | Not started | Escalation already sends email and stores in-app notifications |
+| Notifications (email and in-app, queued) | 11 | Done | [`docs/NOTIFICATIONS.md`](docs/NOTIFICATIONS.md). Not built (beyond the assessment): an inbox API to read them and per-event user settings |
 | Search and filtering | 12 | Done | [`12.search-filtering.md`](tec-doc/12.search-filtering.md) |
 
 ---
