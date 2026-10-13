@@ -26,6 +26,9 @@ return new class extends Migration
             // Agent availability, used by automatic ticket assignment.
             $table->boolean('is_available')->default(true);
             $table->timestamp('last_login_at')->nullable();
+            // Last time this agent was given a ticket. Automatic assignment uses it as the
+            // tie-break when agents have the same workload (longest wait goes first).
+            $table->timestamp('last_assigned_at')->nullable();
 
             $table->rememberToken();
             $table->timestamps();
